@@ -41,7 +41,6 @@ function loadQuiz() {
   quizDB = saved ? JSON.parse(saved) : DEFAULT_QUIZ;
   saveQuiz();
 }
-
 function saveQuiz() {
   localStorage.setItem("quizDB", JSON.stringify(quizDB));
 }
@@ -59,10 +58,42 @@ function render() {
     return;
   }
 
+  if (state === "block") {
+    b.innerHTML = `
+      <h3>점수 ${score} / 최고 ${bestScore}</h3>
+      <div id="game">
+        <div id="board"></div>
+        <div>
+          <div id="blocks"></div>
+          <button onclick="confirmPlace()">설치</button>
+        </div>
+      </div>
+    `;
+    drawBoard();
+    drawBlocks();
+    if (!hasMove()) gameOver();
+    return;
+  }
+
+  if (state === "quiz") {
+    const q = quizSet[quizIndex];
+    b.innerHTML = `
+      <h3>OX 문제 ${quizIndex+1}/3</h3>
+      <p>${q.q}</p>
+      ${
+        showExplain
+          ? `<div class="explain"><b>정답:</b> ${q.a}<br>${q.e}</div>
+             <button onclick="nextQuiz()">다음</button>`
+          : `<button onclick="answer('O')">O</button>
+             <button onclick="answer('X')">X</button>`
+      }
+    `;
+    return;
+  }
+
   if (state === "editor") {
     b.innerHTML = `
       <h2>문제 관리</h2>
-
       <input id="q" placeholder="문제">
       <div>
         <button onclick="setAns('O')">O</button>
@@ -70,23 +101,17 @@ function render() {
       </div>
       <textarea id="e" placeholder="해설"></textarea><br>
       <button onclick="addQuiz()">문제 추가</button>
-
       <hr>
-
       ${quizDB.map(q=>`
         <p>${q.q} (${q.a})
         <button onclick="delQuiz(${q.id})">삭제</button></p>
       `).join("")}
-
       <hr>
-
       <button onclick="exportQuiz()">문제 내보내기</button>
-
       <div class="import-box">
-        <input id="importUrl" placeholder="JSON 파일 URL 붙여넣기">
+        <input id="importUrl" placeholder="JSON URL">
         <button onclick="importQuiz()">문제 불러오기</button>
       </div>
-
       <br>
       <button onclick="state='home';render()">돌아가기</button>
     `;
@@ -102,50 +127,155 @@ function render() {
   }
 }
 
+/* ================= 게임 로직 ================= */
+function startGame() {
+  board.fill(0);
+  score = 0;
+  newBlocks();
+  state = "block";
+  render();
+}
+
+function newBlocks() {
+  blocks = [];
+  for(let i=0;i<3;i++)
+    blocks.push(SHAPES[Math.floor(Math.random()*SHAPES.length)]);
+}
+
+function drawBoard() {
+  const el = document.getElementById("board");
+  el.innerHTML="";
+  board.forEach((v,i)=>{
+    const c=document.createElement("div");
+    c.className="cell"+(v?" filled":"");
+    c.onclick=()=>{previewIndex=i;render();}
+    if(selectedBlock!==null && previewIndex!==null){
+      const can=canPlace(blocks[selectedBlock],previewIndex);
+      blocks[selectedBlock].forEach(([r,c2])=>{
+        const pos=(Math.floor(previewIndex/BOARD)+r)*BOARD+(previewIndex%BOARD+c2);
+        if(pos===i && board[i]===0)
+          c.classList.add(can?"preview-ok":"preview-bad");
+      });
+    }
+    el.appendChild(c);
+  });
+}
+
+function drawBlocks() {
+  const el=document.getElementById("blocks");
+  el.innerHTML="";
+  blocks.forEach((s,i)=>{
+    const b=document.createElement("div");
+    b.className="block";
+    b.onclick=()=>selectedBlock=i;
+    Array(25).fill(0).forEach((_,k)=>{
+      const d=document.createElement("div");
+      if(!s.some(([r,c])=>r*5+c===k)) d.style.visibility="hidden";
+      b.appendChild(d);
+    });
+    el.appendChild(b);
+  });
+}
+
+function canPlace(s,i){
+  const r=Math.floor(i/BOARD), c=i%BOARD;
+  return s.every(([dr,dc])=>{
+    const nr=r+dr,nc=c+dc,p=nr*BOARD+nc;
+    return nr>=0&&nr<BOARD&&nc>=0&&nc<BOARD&&board[p]===0;
+  });
+}
+
+function confirmPlace(){
+  if(selectedBlock===null||previewIndex===null) return;
+  if(!canPlace(blocks[selectedBlock],previewIndex)) return;
+  blocks[selectedBlock].forEach(([r,c])=>{
+    board[(Math.floor(previewIndex/BOARD)+r)*BOARD+(previewIndex%BOARD+c)]=1;
+  });
+  clearLines();
+  blocks.splice(selectedBlock,1);
+  selectedBlock=null; previewIndex=null;
+  if(blocks.length===0){ pickQuiz(); state="quiz"; }
+  render();
+}
+
+function clearLines(){
+  let n=0;
+  for(let r=0;r<BOARD;r++)
+    if([...Array(BOARD)].every((_,c)=>board[r*BOARD+c])){
+      for(let c=0;c<BOARD;c++) board[r*BOARD+c]=0; n++;
+    }
+  for(let c=0;c<BOARD;c++)
+    if([...Array(BOARD)].every((_,r)=>board[r*BOARD+c])){
+      for(let r=0;r<BOARD;r++) board[r*BOARD+c]=0; n++;
+    }
+  if(n){
+    score+=n*100;
+    if(score>bestScore){
+      bestScore=score;
+      localStorage.setItem("bestScore",bestScore);
+    }
+  }
+}
+
+function hasMove(){
+  return blocks.some(s=>board.some((_,i)=>canPlace(s,i)));
+}
+
+function gameOver(){ state="gameover"; render(); }
+
+/* ================= 퀴즈 ================= */
+function pickQuiz(){
+  quizSet=[...quizDB].sort(()=>Math.random()-0.5).slice(0,3);
+  quizIndex=0; quizCorrect=0; showExplain=false;
+}
+
+function answer(v){
+  if(v===quizSet[quizIndex].a) quizCorrect++;
+  showExplain=true;
+  render();
+}
+
+function nextQuiz(){
+  showExplain=false;
+  quizIndex++;
+  if(quizIndex===3){
+    if(quizCorrect>=2){ newBlocks(); state="block"; }
+    else quizIndex=0;
+  }
+  render();
+}
+
 /* ================= 문제 관리 ================= */
-let tempAns = "O";
+let tempAns="O";
 function setAns(v){ tempAns=v; }
 
-function addQuiz() {
-  const q = document.getElementById("q").value.trim();
-  const e = document.getElementById("e").value.trim();
-  if (!q) return;
-  quizDB.push({ id:Date.now(), q, a:tempAns, e });
-  saveQuiz();
-  render();
+function addQuiz(){
+  const q=document.getElementById("q").value.trim();
+  const e=document.getElementById("e").value.trim();
+  if(!q) return;
+  quizDB.push({id:Date.now(),q,a:tempAns,e});
+  saveQuiz(); render();
 }
 
-function delQuiz(id) {
-  quizDB = quizDB.filter(q=>q.id!==id);
-  saveQuiz();
-  render();
+function delQuiz(id){
+  quizDB=quizDB.filter(q=>q.id!==id);
+  saveQuiz(); render();
 }
 
-/* ================= 내보내기 ================= */
-function exportQuiz() {
-  const blob = new Blob([JSON.stringify(quizDB, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "quiz_backup.json";
+function exportQuiz(){
+  const blob=new Blob([JSON.stringify(quizDB,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="quiz_backup.json";
   a.click();
 }
 
-/* ================= 불러오기 ================= */
-async function importQuiz() {
-  const url = document.getElementById("importUrl").value.trim();
-  if (!url) return;
-
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!Array.isArray(data)) throw "형식 오류";
-    quizDB = data;
-    saveQuiz();
-    alert("문제 불러오기 완료");
-    render();
-  } catch {
-    alert("불러오기 실패");
-  }
+async function importQuiz(){
+  const url=document.getElementById("importUrl").value.trim();
+  if(!url) return;
+  const res=await fetch(url);
+  quizDB=await res.json();
+  saveQuiz(); alert("불러오기 완료"); render();
 }
 
 /* ================= 시작 ================= */
