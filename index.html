@@ -2,68 +2,85 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>암기 퍼즐 프로 v2.2 (8x8)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>암기 퍼즐 PRO (Mobile Fix)</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
             --preview: #e67e22; --danger: #e74c3c;
         }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body { 
             font-family: -apple-system, 'Pretendard', sans-serif; 
             background: var(--bg); margin: 0; 
             display: flex; flex-direction: column; align-items: center; 
-            height: 100vh; overflow: hidden; touch-action: none; 
+            height: 100vh; height: -webkit-fill-available;
+            overflow: hidden; touch-action: none; 
         }
         
-        .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; height: 100%; flex-direction: column; }
+        /* 화면 전체 레이아웃 */
+        .screen { 
+            display: none; width: 100%; max-width: 450px; 
+            padding: env(safe-area-inset-top) 15px env(safe-area-inset-bottom) 15px; 
+            height: 100%; flex-direction: column; 
+        }
         .active { display: flex; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; width: 100%; }
-        .score-box { text-align: right; }
+        /* 상단 점수판 영역 개선 */
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px 5px; min-height: 60px;
+        }
+        .score-box { text-align: right; line-height: 1.2; }
         
-        /* 8x8 그리드 수정 */
+        /* 게임 보드: 화면 높이에 따라 자동 축소 */
+        #grid-container {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            width: 100%; min-height: 0; /* 중요: flex 안에서 축소 가능하게 함 */
+        }
         #grid { 
-            display: grid; 
-            grid-template-columns: repeat(8, 1fr); 
-            gap: 5px; 
-            background: #cbd5e0; padding: 8px; border-radius: 12px; 
-            aspect-ratio: 1 / 1; width: 100%; box-sizing: border-box;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; 
+            background: #cbd5e0; padding: 6px; border-radius: 12px; 
+            width: 100%; max-width: 380px; aspect-ratio: 1 / 1;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
         }
         .cell { 
-            background: #edf2f7; border-radius: 5px; aspect-ratio: 1 / 1; 
+            background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; 
             transition: all 0.2s ease;
         }
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.clearing { background: var(--s); transform: scale(1.1); }
 
+        /* 하단 트레이 */
         #tray { 
             display: flex; justify-content: space-around; align-items: center; 
-            height: 110px; margin: 20px 0; background: white; 
+            height: 100px; margin: 10px 0 20px 0; background: white; 
             border-radius: 20px; padding: 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
         }
         .shape-preview { 
-            width: 90px; height: 90px; display: grid; 
+            width: 80px; height: 80px; display: grid; 
             grid-template-columns: repeat(4, 1fr); gap: 2px; 
-            border-radius: 10px; padding: 8px; box-sizing: border-box;
+            border-radius: 10px; padding: 6px; box-sizing: border-box;
             transition: transform 0.2s; border: 2px solid transparent;
         }
-        .shape-preview.selected { border-color: var(--preview); transform: scale(1.05); background: #fffaf0; }
-        .preview-cell.filled { background: var(--p); border-radius: 2px; }
+        .shape-preview.selected { border-color: var(--preview); transform: scale(1.1); background: #fffaf0; }
+        .preview-cell.filled { background: var(--p); border-radius: 1.5px; }
 
+        /* 공통 버튼 및 관리창 */
         .menu-btn { 
             width: 100%; padding: 16px; margin: 8px 0; border: none; 
             border-radius: 15px; color: white; font-size: 1.1rem; 
-            cursor: pointer; font-weight: bold; transition: opacity 0.2s;
+            cursor: pointer; font-weight: bold;
         }
         .btn-game { background: var(--p); }
         .btn-manage { background: #9b59b6; }
         
-        .word-list-container { flex: 1; overflow-y: auto; margin: 15px 0; padding-right: 5px; }
+        .word-list-container { flex: 1; overflow-y: auto; margin: 15px 0; }
         .word-card { 
             background: white; padding: 15px; margin-bottom: 10px; 
             border-radius: 12px; position: relative; border-left: 5px solid var(--p);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
         #quiz-modal { 
@@ -72,22 +89,21 @@
             align-items: center; justify-content: center; z-index: 2000; padding: 20px; 
         }
         .modal-inner { 
-            background: white; padding: 30px; border-radius: 30px; 
+            background: white; padding: 25px; border-radius: 25px; 
             width: 100%; max-width: 400px; text-align: center; 
         }
-
         .file-ops { display: flex; gap: 8px; margin-top: 10px; }
-        .btn-outline { flex: 1; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
+        .btn-outline { flex: 1; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="screen-home" class="screen active">
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <div style="font-size: 5rem; margin-bottom: 20px;">🧩</div>
-            <h1 style="color: #2c3e50; margin: 0;">암기 퍼즐 PRO</h1>
-            <p style="color: #7f8c8d;">8x8 보드에서 더 빠르게!</p>
-            <div style="background:white; padding:10px 30px; border-radius:20px; margin: 20px 0; font-weight:bold;">
+            <div style="font-size: 4rem; margin-bottom: 10px;">🧩</div>
+            <h1 style="color: #2c3e50; margin: 0; font-size: 1.8rem;">암기 퍼즐 PRO</h1>
+            <p style="color: #7f8c8d; font-size: 0.9rem;">8x8 보드 최적화 버전</p>
+            <div style="background:white; padding:10px 25px; border-radius:15px; margin: 20px 0; font-weight:bold; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                 최고 점수: <span id="high-score-home" style="color:var(--p)">0</span>
             </div>
         </div>
@@ -97,27 +113,29 @@
 
     <div id="screen-game" class="screen">
         <div class="header">
-            <button onclick="confirmExit()" style="padding:10px 18px; border-radius:12px; border:none; background:#e2e8f0; font-weight:bold;">🏠 나가기</button>
+            <button onclick="confirmExit()" style="padding:8px 15px; border-radius:10px; border:none; background:#e2e8f0; font-weight:bold; font-size: 0.9rem;">🏠 홈</button>
             <div class="score-box">
-                <div style="font-size:0.75rem; color:#718096;">BEST <span id="high-score-game">0</span></div>
-                <div style="font-weight:900; font-size:1.5rem; color:var(--p)" id="score">0</div>
+                <div style="font-size:0.7rem; color:#718096; font-weight: bold;">BEST <span id="high-score-game">0</span></div>
+                <div style="font-weight:900; font-size:1.4rem; color:var(--p)" id="score">0</div>
             </div>
         </div>
-        <div id="grid"></div>
+        <div id="grid-container">
+            <div id="grid"></div>
+        </div>
         <div id="tray">
             <div id="shape-0" class="shape-preview" onclick="selectShape(0)"></div>
             <div id="shape-1" class="shape-preview" onclick="selectShape(1)"></div>
             <div id="shape-2" class="shape-preview" onclick="selectShape(2)"></div>
         </div>
-        <p style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록 선택 후 보드를 터치하세요</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록 선택 후 한 칸을 두 번 눌러 설치</p>
     </div>
 
     <div id="screen-manage" class="screen">
-        <h2 style="margin: 10px 0;">문제 관리</h2>
-        <div style="background:white; padding:15px; border-radius:15px;">
-            <textarea id="new-q" style="width:100%; height:80px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제 입력"></textarea>
-            <textarea id="new-a" style="width:100%; height:60px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답 입력"></textarea>
-            <button onclick="addWord()" class="menu-btn btn-game" style="margin:0; padding:12px;">추가하기</button>
+        <h2 style="margin: 10px 0; font-size: 1.4rem;">문제 관리</h2>
+        <div style="background:white; padding:12px; border-radius:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            <textarea id="new-q" style="width:100%; height:70px; margin-bottom:8px; padding:10px; border:1px solid #eee; border-radius:8px; resize:none; font-size:0.9rem;" placeholder="문제를 입력하세요..."></textarea>
+            <textarea id="new-a" style="width:100%; height:50px; margin-bottom:8px; padding:10px; border:1px solid #eee; border-radius:8px; resize:none; font-size:0.9rem;" placeholder="정답을 입력하세요..."></textarea>
+            <button onclick="addWord()" class="menu-btn btn-game" style="margin:0; padding:12px; font-size: 1rem;">추가하기</button>
             <div class="file-ops">
                 <button class="btn-outline" onclick="exportJSON()">📄 내보내기</button>
                 <button class="btn-outline" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
@@ -125,25 +143,24 @@
             <input type="file" id="file-input" style="display:none" onchange="importJSON(event)" accept=".json">
         </div>
         <div class="word-list-container" id="word-list"></div>
-        <button class="menu-btn" style="background:#64748b;" onclick="showScreen('home')">돌아가기</button>
+        <button class="menu-btn" style="background:#64748b; margin-top: auto;" onclick="showScreen('home')">돌아가기</button>
     </div>
 
     <div id="quiz-modal">
         <div class="modal-inner">
-            <h2 id="q-title" style="color:var(--p); margin-top:0;">복습 타임!</h2>
-            <div id="q-text" style="background:#f8fafc; padding:20px; border-radius:15px; margin-bottom:20px; text-align:left; line-height:1.6;"></div>
-            <textarea id="q-input" style="width:100%; height:100px; padding:12px; border:2px solid #e2e8f0; border-radius:12px; margin-bottom:15px; box-sizing:border-box; font-size:1rem;" placeholder="정답을 입력하세요"></textarea>
-            <div id="q-feedback" style="margin-bottom:15px; font-weight:bold; min-height:24px;"></div>
-            <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0;">제출하기</button>
-            <button id="q-next" class="menu-btn btn-manage" style="display:none; margin:0;" onclick="nextQuestion()">다음 문제</button>
+            <h3 id="q-title" style="color:var(--p); margin-top:0;">복습</h3>
+            <div id="q-text" style="background:#f8fafc; padding:15px; border-radius:12px; margin-bottom:15px; text-align:left; line-height:1.5; font-size: 0.95rem; max-height: 150px; overflow-y: auto;"></div>
+            <textarea id="q-input" style="width:100%; height:80px; padding:10px; border:2px solid #e2e8f0; border-radius:10px; margin-bottom:10px; font-size:1rem;" placeholder="정답 입력"></textarea>
+            <div id="q-feedback" style="margin-bottom:10px; font-weight:bold; font-size: 0.9rem;"></div>
+            <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0; padding:12px;">제출</button>
+            <button id="q-next" class="menu-btn btn-manage" style="display:none; margin:0; padding:12px;" onclick="nextQuestion()">다음</button>
         </div>
     </div>
 
 <script>
-    // --- 8x8로 상수 변경 ---
+    // --- 설정 ---
     const GRID_SIZE = 8;
     const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
-    
     let score = 0;
     let highScore = localStorage.getItem('puzzleBest8x8') || 0;
     let grid = Array(TOTAL_CELLS).fill(0);
@@ -161,6 +178,7 @@
         [[0,1], [1,0], [1,1], [1,2]], [[0,0]], [[0,0], [0,1], [1,0]]
     ];
 
+    // --- 화면 및 데이터 ---
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('screen-' + id).classList.add('active');
@@ -175,7 +193,7 @@
     }
 
     function exportJSON() {
-        if(vocabulary.length === 0) return alert("내보낼 데이터가 없습니다.");
+        if(vocabulary.length === 0) return;
         const blob = new Blob([JSON.stringify(vocabulary, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -194,15 +212,16 @@
                     vocabulary = data; 
                     localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
                     renderWordList(); 
-                    alert("불러오기 완료!"); 
+                    alert("불러오기 완료"); 
                 }
-            } catch(err) { alert("오류 발생"); }
+            } catch(err) { alert("형식 오류"); }
         };
         reader.readAsText(file);
     }
 
+    // --- 게임 코어 ---
     function startGame() { 
-        if(vocabulary.length < 3) { alert("최소 3개의 문제가 필요합니다."); showScreen('manage'); return; }
+        if(vocabulary.length < 3) { alert("문제를 3개 이상 등록해주세요."); showScreen('manage'); return; }
         showScreen('game'); initGame(); 
     }
 
@@ -313,6 +332,7 @@
         }) || trayShapes.every(s => s === null);
     }
 
+    // --- 퀴즈 ---
     let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
     function startQuiz() {
         curQuiz = 0; quizCorrect = 0;
@@ -335,8 +355,12 @@
     function checkQuizAnswer() {
         const input = document.getElementById('q-input').value.trim().replace(/\s/g, "");
         const ans = sessionQuizzes[curQuiz].a.trim().replace(/\s/g, "");
-        if (input === ans) { quizCorrect++; document.getElementById('q-feedback').innerHTML = "<span style='color:var(--s)'>정답입니다!</span>"; }
-        else { document.getElementById('q-feedback').innerHTML = `<span style='color:var(--danger)'>오답! 정답:<br><small>${sessionQuizzes[curQuiz].a}</small></span>`; }
+        if (input === ans) { 
+            quizCorrect++; 
+            document.getElementById('q-feedback').innerHTML = "<span style='color:var(--s)'>정답입니다! ✨</span>"; 
+        } else { 
+            document.getElementById('q-feedback').innerHTML = `<span style='color:var(--danger)'>오답! 정답:<br><small>${sessionQuizzes[curQuiz].a}</small></span>`; 
+        }
         document.getElementById('q-submit').style.display = "none";
         document.getElementById('q-next').style.display = "block";
     }
@@ -366,8 +390,8 @@
         const list = document.getElementById('word-list');
         list.innerHTML = vocabulary.map((item, idx) => `
             <div class="word-card">
-                <div style="font-weight:bold; margin-bottom:5px;">${item.q}</div>
-                <div style="font-size:0.85rem; color:#666;">${item.a}</div>
+                <div style="font-weight:bold; margin-bottom:5px; font-size: 0.9rem;">${item.q}</div>
+                <div style="font-size:0.8rem; color:#666;">${item.a}</div>
                 <button onclick="deleteWord(${idx})" style="position:absolute; top:10px; right:10px; border:none; background:none; color:#ccc;">✕</button>
             </div>
         `).join('');
