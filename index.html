@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v2.4</title>
+    <title>암기 퍼즐 PRO v2.5</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -14,7 +14,7 @@
         body { 
             font-family: -apple-system, 'Pretendard', sans-serif; 
             background: var(--bg);
-            width: 100vw; height: 100dvh; /* 모바일 동적 높이 대응 */
+            width: 100vw; height: 100dvh;
             display: flex; flex-direction: column; align-items: center; 
             overflow: hidden; touch-action: none; 
         }
@@ -84,7 +84,7 @@
     <div id="screen-home" class="screen active">
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
             <div style="font-size: 4.5rem; margin-bottom: 15px;">🧩</div>
-            <h1 style="color: #2c3e50; font-size: 2rem;">암기 퍼즐 PRO</h1>
+            <h1 style="color: #2c3e50;">암기 퍼즐 PRO</h1>
             <div style="background:white; padding:10px 25px; border-radius:15px; margin: 20px 0; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 최고 점수: <span id="high-score-home" style="color:var(--p)">0</span>
             </div>
@@ -113,7 +113,7 @@
     </div>
 
     <div id="screen-manage" class="screen">
-        <h2 style="margin: 15px 0; font-size: 1.5rem;">문제 관리</h2>
+        <h2 style="margin: 15px 0;">문제 관리</h2>
         <div style="background:white; padding:15px; border-radius:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
             <textarea id="new-q" style="width:100%; height:80px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제를 입력하세요"></textarea>
             <textarea id="new-a" style="width:100%; height:60px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답을 입력하세요"></textarea>
@@ -133,7 +133,7 @@
             <h2 id="q-title" style="color:var(--p); margin-bottom:15px;">복습 타임!</h2>
             <div id="q-text"></div>
             <textarea id="q-input" placeholder="정답을 입력하세요"></textarea>
-            <div id="q-feedback" style="margin-bottom:15px; font-weight:bold; font-size: 0.9rem;"></div>
+            <div id="q-feedback" style="margin-bottom:15px; font-weight:bold; font-size: 0.9rem; text-align: center;"></div>
             <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0; padding: 12px;">확인</button>
             <button id="q-next" class="menu-btn btn-manage" style="display:none; margin:0; padding: 12px;" onclick="nextQuestion()">다음 문제</button>
         </div>
@@ -180,14 +180,19 @@
         document.getElementById('q-next').style.display = "none";
     }
 
+    // --- 핵심 수정 영역: 정답 시에도 텍스트 노출 ---
     function checkQuizAnswer() {
         const input = document.getElementById('q-input').value.trim().replace(/\s/g, "");
-        const ans = sessionQuizzes[curQuiz].a.trim().replace(/\s/g, "");
-        if (input === ans) {
+        const actualAns = sessionQuizzes[curQuiz].a;
+        const processedAns = actualAns.trim().replace(/\s/g, "");
+        
+        const feedbackEl = document.getElementById('q-feedback');
+        
+        if (input === processedAns) {
             quizCorrect++;
-            document.getElementById('q-feedback').innerHTML = "<span style='color:var(--s)'>정답입니다!</span>";
+            feedbackEl.innerHTML = `<span style='color:var(--s)'>정답입니다! ✨<br>정답: ${actualAns}</span>`;
         } else {
-            document.getElementById('q-feedback').innerHTML = `<span style='color:var(--danger)'>오답! 정답:<br><small>${sessionQuizzes[curQuiz].a}</small></span>`;
+            feedbackEl.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${actualAns}</span>`;
         }
         document.getElementById('q-submit').style.display = "none";
         document.getElementById('q-next').style.display = "block";
@@ -200,7 +205,7 @@
             document.getElementById('quiz-modal').style.display = 'none';
             window.scrollTo(0,0);
             if (quizCorrect >= (sessionQuizzes.length >= 3 ? 2 : 1)) refillTray();
-            else { alert("재도전!"); startQuiz(); }
+            else { alert("불합격! 다시 퀴즈를 풉니다."); startQuiz(); }
         }
     }
 
@@ -335,4 +340,3 @@
 </script>
 </body>
 </html>
-
