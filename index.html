@@ -2,172 +2,155 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>암기 퍼즐 프로 v2.1 (8x8)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>암기 퍼즐 PRO v2.4</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
             --preview: #e67e22; --danger: #e74c3c;
         }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        
         body { 
             font-family: -apple-system, 'Pretendard', sans-serif; 
-            background: var(--bg); margin: 0; 
+            background: var(--bg);
+            width: 100vw; height: 100dvh; /* 모바일 동적 높이 대응 */
             display: flex; flex-direction: column; align-items: center; 
-            height: 100vh; overflow: hidden; touch-action: none; 
+            overflow: hidden; touch-action: none; 
         }
         
-        .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; height: 100%; flex-direction: column; }
+        .screen { 
+            display: none; width: 100%; max-width: 450px; 
+            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; 
+            height: 100%; flex-direction: column; 
+        }
         .active { display: flex; }
         
-        /* 헤더 스타일 */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; width: 100%; }
-        .score-box { text-align: right; }
+        .home-btns { width: 100%; margin-top: auto; padding-bottom: 30px; }
+
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px 0; min-height: 70px; width: 100%;
+        }
         
-        /* 게임 보드 - 8x8로 수정 */
+        #grid-container {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            width: 100%; min-height: 0;
+        }
         #grid { 
             display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; 
             background: #cbd5e0; padding: 6px; border-radius: 12px; 
-            aspect-ratio: 1 / 1; width: 100%; box-sizing: border-box;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%; aspect-ratio: 1 / 1;
         }
-        .cell { 
-            background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; 
-            transition: all 0.2s ease;
-        }
+        .cell { background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; transition: all 0.2s; }
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.clearing { background: var(--s); transform: scale(1.1); }
 
-        /* 하단 트레이 */
         #tray { 
             display: flex; justify-content: space-around; align-items: center; 
-            height: 110px; margin: 20px 0; background: white; 
-            border-radius: 20px; padding: 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
+            height: 100px; margin-bottom: 15px; background: white; 
+            border-radius: 20px; padding: 10px; width: 100%;
         }
-        .shape-preview { 
-            width: 90px; height: 90px; display: grid; 
-            grid-template-columns: repeat(4, 1fr); gap: 2px; 
-            border-radius: 10px; padding: 8px; box-sizing: border-box;
-            transition: transform 0.2s; border: 2px solid transparent;
-        }
-        .shape-preview.selected { border-color: var(--preview); transform: scale(1.05); background: #fffaf0; }
-        .preview-cell.filled { background: var(--p); border-radius: 2px; }
+        .shape-preview { width: 80px; height: 80px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; border-radius: 10px; padding: 6px; border: 2px solid transparent; }
+        .shape-preview.selected { border-color: var(--preview); transform: scale(1.1); background: #fffaf0; }
+        .preview-cell.filled { background: var(--p); border-radius: 1.5px; }
 
-        /* 공통 버튼 */
-        .menu-btn { 
-            width: 100%; padding: 16px; margin: 8px 0; border: none; 
-            border-radius: 15px; color: white; font-size: 1.1rem; 
-            cursor: pointer; font-weight: bold; transition: opacity 0.2s;
-        }
+        .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
         .btn-game { background: var(--p); }
         .btn-manage { background: #9b59b6; }
         
-        /* 문제 관리창 */
-        .word-list-container { flex: 1; overflow-y: auto; margin: 15px 0; padding-right: 5px; }
-        .word-card { 
-            background: white; padding: 15px; margin-bottom: 10px; 
-            border-radius: 12px; position: relative; border-left: 5px solid var(--p);
-        }
+        .word-list-container { flex: 1; overflow-y: auto; margin: 15px 0; width: 100%; }
+        .word-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; position: relative; border-left: 5px solid var(--p); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
-        /* 퀴즈 모달 */
         #quiz-modal { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); display: none; 
-            align-items: center; justify-content: center; z-index: 2000; padding: 20px; 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; 
+            background: rgba(0,0,0,0.9); display: none; 
+            align-items: center; justify-content: center; z-index: 9999; padding: 20px; 
         }
         .modal-inner { 
-            background: white; padding: 30px; border-radius: 30px; 
-            width: 100%; max-width: 400px; text-align: center; 
+            background: white; padding: 25px; border-radius: 25px; 
+            width: 100%; max-width: 360px;
+            display: flex; flex-direction: column; align-items: center;
         }
+        #q-input { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin-bottom: 15px; resize: none; }
+        #q-text { width: 100%; background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: left; font-size: 0.95rem; line-height: 1.5; max-height: 150px; overflow-y: auto; }
 
-        /* 파일 입출력 버튼 스타일 */
-        .file-ops { display: flex; gap: 8px; margin-top: 10px; }
-        .btn-outline { flex: 1; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
+        .file-ops { display: flex; gap: 8px; width: 100%; margin-top: 10px; }
+        .btn-outline { flex: 1; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="screen-home" class="screen active">
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <div style="font-size: 5rem; margin-bottom: 20px;">🧩</div>
-            <h1 style="color: #2c3e50; margin: 0;">암기 퍼즐 PRO</h1>
-            <p style="color: #7f8c8d;">블록을 맞추며 법조문을 정복하세요</p>
-            <div style="background:white; padding:10px 30px; border-radius:20px; margin: 20px 0; font-weight:bold;">
+            <div style="font-size: 4.5rem; margin-bottom: 15px;">🧩</div>
+            <h1 style="color: #2c3e50; font-size: 2rem;">암기 퍼즐 PRO</h1>
+            <div style="background:white; padding:10px 25px; border-radius:15px; margin: 20px 0; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 최고 점수: <span id="high-score-home" style="color:var(--p)">0</span>
             </div>
         </div>
-        <button class="menu-btn btn-game" onclick="startGame()">게임 시작</button>
-        <button class="menu-btn btn-manage" onclick="showScreen('manage')">문제 관리</button>
+        <div class="home-btns">
+            <button class="menu-btn btn-game" onclick="startGame()">게임 시작</button>
+            <button class="menu-btn btn-manage" onclick="showScreen('manage')">문제 관리</button>
+        </div>
     </div>
 
     <div id="screen-game" class="screen">
         <div class="header">
-            <button onclick="confirmExit()" style="padding:10px 18px; border-radius:12px; border:none; background:#e2e8f0; font-weight:bold;">🏠 나가기</button>
+            <button onclick="confirmExit()" style="padding:8px 15px; border-radius:10px; border:none; background:#fff; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.1); font-size: 0.9rem;">🏠 홈</button>
             <div class="score-box">
-                <div style="font-size:0.75rem; color:#718096;">BEST <span id="high-score-game">0</span></div>
+                <div style="font-size:0.7rem; color:#718096; font-weight: bold;">BEST <span id="high-score-game">0</span></div>
                 <div style="font-weight:900; font-size:1.5rem; color:var(--p)" id="score">0</div>
             </div>
         </div>
-        <div id="grid"></div>
+        <div id="grid-container"><div id="grid"></div></div>
         <div id="tray">
             <div id="shape-0" class="shape-preview" onclick="selectShape(0)"></div>
             <div id="shape-1" class="shape-preview" onclick="selectShape(1)"></div>
             <div id="shape-2" class="shape-preview" onclick="selectShape(2)"></div>
         </div>
-        <p style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록 선택 후 보드를 터치하세요</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록 선택 후 한 칸을 두 번 눌러 설치</p>
     </div>
 
     <div id="screen-manage" class="screen">
-        <h2 style="margin: 10px 0;">문제 관리</h2>
-        <div style="background:white; padding:15px; border-radius:15px;">
-            <textarea id="new-q" style="width:100%; height:80px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제 (예: 민법 제1조)"></textarea>
-            <textarea id="new-a" style="width:100%; height:60px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답"></textarea>
-            <button onclick="addWord()" class="menu-btn btn-game" style="margin:0; padding:12px;">추가하기</button>
-            
+        <h2 style="margin: 15px 0; font-size: 1.5rem;">문제 관리</h2>
+        <div style="background:white; padding:15px; border-radius:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+            <textarea id="new-q" style="width:100%; height:80px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제를 입력하세요"></textarea>
+            <textarea id="new-a" style="width:100%; height:60px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답을 입력하세요"></textarea>
+            <button onclick="addWord()" class="menu-btn btn-game" style="margin:0; padding: 12px;">추가하기</button>
             <div class="file-ops">
-                <button class="btn-outline" onclick="exportJSON()">📄 내보내기</button>
-                <button class="btn-outline" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
+                <button class="btn-outline" onclick="exportJSON()">내보내기</button>
+                <button class="btn-outline" onclick="document.getElementById('file-input').click()">불러오기</button>
             </div>
             <input type="file" id="file-input" style="display:none" onchange="importJSON(event)" accept=".json">
         </div>
         <div class="word-list-container" id="word-list"></div>
-        <button class="menu-btn" style="background:#64748b;" onclick="showScreen('home')">돌아가기</button>
+        <button class="menu-btn" style="background:#64748b; margin-top: auto;" onclick="showScreen('home')">돌아가기</button>
     </div>
 
     <div id="quiz-modal">
         <div class="modal-inner">
-            <h2 id="q-title" style="color:var(--p); margin-top:0;">복습 타임!</h2>
-            <div id="q-text" style="background:#f8fafc; padding:20px; border-radius:15px; margin-bottom:20px; text-align:left; line-height:1.6;"></div>
-            <textarea id="q-input" style="width:100%; height:100px; padding:12px; border:2px solid #e2e8f0; border-radius:12px; margin-bottom:15px; box-sizing:border-box; font-size:1rem;" placeholder="정답을 입력하세요"></textarea>
-            <div id="q-feedback" style="margin-bottom:15px; font-weight:bold; min-height:24px;"></div>
-            <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0;">제출하기</button>
-            <button id="q-next" class="menu-btn btn-manage" style="display:none; margin:0;" onclick="nextQuestion()">다음 문제</button>
+            <h2 id="q-title" style="color:var(--p); margin-bottom:15px;">복습 타임!</h2>
+            <div id="q-text"></div>
+            <textarea id="q-input" placeholder="정답을 입력하세요"></textarea>
+            <div id="q-feedback" style="margin-bottom:15px; font-weight:bold; font-size: 0.9rem;"></div>
+            <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0; padding: 12px;">확인</button>
+            <button id="q-next" class="menu-btn btn-manage" style="display:none; margin:0; padding: 12px;" onclick="nextQuestion()">다음 문제</button>
         </div>
     </div>
 
 <script>
-    // --- 초기 설정 (GRID_SIZE 8로 변경) ---
     const GRID_SIZE = 8;
-    let score = 0;
-    let highScore = localStorage.getItem('puzzleBest') || 0;
-    let grid = Array(GRID_SIZE * GRID_SIZE).fill(0);
-    let trayShapes = [null, null, null];
-    let selectedShapeIndex = null;
-    let lastPreviewIdx = null;
+    const TOTAL_CELLS = 64;
+    let score = 0, highScore = localStorage.getItem('puzzleBest8x8') || 0;
+    let grid = Array(TOTAL_CELLS).fill(0), trayShapes = [null, null, null];
+    let selectedShapeIndex = null, lastPreviewIdx = null;
+    let vocabulary = JSON.parse(localStorage.getItem('myVocab')) || [{q:"민법 제1조", a:"민사에 관하여 법률에 규정이 없으면 관습법에 의하고 관습법이 없으면 조리에 의한다."}];
 
-    let vocabulary = JSON.parse(localStorage.getItem('myVocab')) || [
-        { q: "민법 제1조", a: "민사에 관하여 법률에 규정이 없으면 관습법에 의하고 관습법이 없으면 조리에 의한다." }
-    ];
-
-    const shapes = [
-        [[0,0], [0,1], [1,0], [1,1]], [[0,0], [1,0], [2,0]], [[0,0], [0,1], [0,2]],
-        [[0,0], [1,0], [1,1]], [[0,0], [0,1], [0,2], [0,3]], [[0,0], [1,0], [2,0], [3,0]],
-        [[0,1], [1,0], [1,1], [1,2]], [[0,0]], [[0,0], [0,1], [1,0]]
-    ];
-
-    // --- 화면 전환 ---
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('screen-' + id).classList.add('active');
+        window.scrollTo(0, 0); 
         updateScores();
         if(id === 'manage') renderWordList();
     }
@@ -178,52 +161,81 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 파일 입출력 로직 ---
+    let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
+    function startQuiz() {
+        if(vocabulary.length < 1) { refillTray(); return; }
+        curQuiz = 0; quizCorrect = 0;
+        sessionQuizzes = [...vocabulary].sort(() => Math.random() - 0.5).slice(0, 3);
+        document.getElementById('quiz-modal').style.display = 'flex';
+        showQuestion();
+    }
+
+    function showQuestion() {
+        const q = sessionQuizzes[curQuiz];
+        document.getElementById('q-title').innerText = `검토 (${curQuiz + 1}/${sessionQuizzes.length})`;
+        document.getElementById('q-text').innerText = q.q;
+        document.getElementById('q-input').value = "";
+        document.getElementById('q-feedback').innerText = "";
+        document.getElementById('q-submit').style.display = "block";
+        document.getElementById('q-next').style.display = "none";
+    }
+
+    function checkQuizAnswer() {
+        const input = document.getElementById('q-input').value.trim().replace(/\s/g, "");
+        const ans = sessionQuizzes[curQuiz].a.trim().replace(/\s/g, "");
+        if (input === ans) {
+            quizCorrect++;
+            document.getElementById('q-feedback').innerHTML = "<span style='color:var(--s)'>정답입니다!</span>";
+        } else {
+            document.getElementById('q-feedback').innerHTML = `<span style='color:var(--danger)'>오답! 정답:<br><small>${sessionQuizzes[curQuiz].a}</small></span>`;
+        }
+        document.getElementById('q-submit').style.display = "none";
+        document.getElementById('q-next').style.display = "block";
+    }
+
+    function nextQuestion() {
+        curQuiz++;
+        if (curQuiz < sessionQuizzes.length) showQuestion();
+        else {
+            document.getElementById('quiz-modal').style.display = 'none';
+            window.scrollTo(0,0);
+            if (quizCorrect >= (sessionQuizzes.length >= 3 ? 2 : 1)) refillTray();
+            else { alert("재도전!"); startQuiz(); }
+        }
+    }
+
     function exportJSON() {
-        if(vocabulary.length === 0) return alert("내보낼 데이터가 없습니다.");
-        const blob = new Blob([JSON.stringify(vocabulary, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([JSON.stringify(vocabulary, null, 2)], {type: "application/json"});
         const a = document.createElement("a");
-        a.href = url; a.download = `quiz_backup_${new Date().toLocaleDateString()}.json`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `quiz_backup.json`;
         a.click();
-        URL.revokeObjectURL(url);
     }
 
     function importJSON(e) {
         const file = e.target.files[0];
-        if (!file) return;
+        if(!file) return;
         const reader = new FileReader();
-        reader.onload = function(evt) {
-            try {
-                const data = JSON.parse(evt.target.result);
-                if(Array.isArray(data)) { 
-                    vocabulary = data; 
-                    localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
-                    renderWordList(); 
-                    alert("성공적으로 불러왔습니다!"); 
-                }
-            } catch(err) { alert("올바른 JSON 형식이 아닙니다."); }
+        reader.onload = (evt) => {
+            vocabulary = JSON.parse(evt.target.result);
+            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
+            renderWordList(); alert("불러오기 완료!");
         };
         reader.readAsText(file);
-        e.target.value = ''; 
     }
 
-    // --- 게임 로직 ---
+    const shapes = [[[0,0],[0,1],[1,0],[1,1]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[1,1]],[[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],[[0,1],[1,0],[1,1],[1,2]],[[0,0]],[[0,0],[0,1],[1,0]]];
+
     function startGame() { 
-        if(vocabulary.length < 3) {
-            alert("최소 3개의 문제가 필요합니다.");
-            showScreen('manage');
-            return;
-        }
-        showScreen('game'); 
-        initGame(); 
+        if(vocabulary.length < 1) return alert("문제를 먼저 등록해주세요.");
+        showScreen('game'); initGame(); 
     }
 
     function initGame() {
         score = 0; grid.fill(0); updateScores();
         const gridEl = document.getElementById('grid');
         gridEl.innerHTML = "";
-        for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+        for (let i = 0; i < TOTAL_CELLS; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell'; cell.id = 'cell-' + i;
             cell.onclick = () => handleCellClick(i);
@@ -233,183 +245,94 @@
     }
 
     function refillTray() {
-        trayShapes = [0, 1, 2].map(() => shapes[Math.floor(Math.random() * shapes.length)]);
+        trayShapes = [0,1,2].map(() => shapes[Math.floor(Math.random()*shapes.length)]);
         renderTray();
-        if(!canAnyShapeBePlaced()) {
-            setTimeout(() => { alert("게임 오버!"); showScreen('home'); }, 500);
-        }
+        if(!canAnyShapeBePlaced()) { alert("게임 종료!"); showScreen('home'); }
     }
 
     function renderTray() {
-        trayShapes.forEach((shape, i) => {
+        trayShapes.forEach((s, i) => {
             const el = document.getElementById(`shape-${i}`);
-            el.innerHTML = ""; el.style.opacity = shape ? "1" : "0.1";
-            el.className = 'shape-preview' + (selectedShapeIndex === i ? ' selected' : '');
-            if (!shape) return;
-            for (let r=0; r<4; r++) {
-                for (let c=0; c<4; c++) {
-                    const div = document.createElement('div');
-                    div.className = 'preview-cell' + (shape.some(p => p[0]===r && p[1]===c) ? ' filled' : '');
-                    el.appendChild(div);
-                }
+            el.innerHTML = ""; el.style.opacity = s ? "1" : "0.1";
+            el.className = 'shape-preview' + (selectedShapeIndex===i?' selected':'');
+            if(!s) return;
+            for(let r=0; r<4; r++) for(let c=0; c<4; c++) {
+                const div = document.createElement('div');
+                div.className = 'preview-cell' + (s.some(p=>p[0]===r&&p[1]===c)?' filled':'');
+                el.appendChild(div);
             }
         });
     }
 
-    function selectShape(i) { if (!trayShapes[i]) return; clearPreview(); selectedShapeIndex = (selectedShapeIndex === i) ? null : i; renderTray(); }
+    function selectShape(i) { if(trayShapes[i]) { selectedShapeIndex = i; renderTray(); } }
 
     function handleCellClick(idx) {
-        if (selectedShapeIndex === null) return;
-        const shape = trayShapes[selectedShapeIndex];
-        const r = Math.floor(idx / GRID_SIZE), c = idx % GRID_SIZE;
+        if(selectedShapeIndex === null) return;
+        const s = trayShapes[selectedShapeIndex], r = Math.floor(idx/8), c = idx%8;
         let targets = [];
-        
-        const canPlace = shape.every(p => {
-            const nr = r + p[0], nc = c + p[1];
-            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr * GRID_SIZE + nc] === 0) {
-                targets.push(nr * GRID_SIZE + nc); return true;
-            }
+        const fit = s.every(p => {
+            const nr=r+p[0], nc=c+p[1];
+            if(nr<8 && nc<8 && grid[nr*8+nc]===0) { targets.push(nr*8+nc); return true; }
             return false;
         });
-
-        if (!canPlace) { clearPreview(); return; }
-
-        if (lastPreviewIdx === idx) {
-            targets.forEach(t => { 
-                grid[t] = 1; 
-                document.getElementById('cell-' + t).classList.add('filled');
-            });
+        if(!fit) return;
+        if(lastPreviewIdx === idx) {
+            targets.forEach(t => { grid[t]=1; document.getElementById('cell-'+t).classList.add('filled'); });
             trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null;
-            clearPreview(); renderTray(); checkLines();
-            
-            if (trayShapes.every(s => s === null)) { startQuiz(); }
-            else if (!canAnyShapeBePlaced()) { setTimeout(() => { alert("종료!"); showScreen('home'); }, 300); }
+            renderTray(); checkLines();
+            if(trayShapes.every(v => v === null)) startQuiz();
         } else {
-            clearPreview(); lastPreviewIdx = idx;
-            targets.forEach(t => { document.getElementById('cell-' + t).style.boxShadow = "inset 0 0 0 4px var(--preview)"; });
+            document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
+            targets.forEach(t => document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)");
+            lastPreviewIdx = idx;
         }
-    }
-
-    function clearPreview() { 
-        document.querySelectorAll('.cell').forEach(c => c.style.boxShadow = "none"); 
-        lastPreviewIdx = null; 
     }
 
     function checkLines() {
-        let rC = [], cC = [];
-        for (let i=0; i<GRID_SIZE; i++) {
-            // 행 체크
-            if (grid.slice(i*GRID_SIZE, i*GRID_SIZE+GRID_SIZE).every(v => v === 1)) rC.push(i);
-            // 열 체크
-            let col = []; for (let j=0; j<GRID_SIZE; j++) col.push(grid[j*GRID_SIZE + i]);
-            if (col.every(v => v === 1)) cC.push(i);
+        let rs=[], cs=[];
+        for(let i=0; i<8; i++) {
+            if(grid.slice(i*8, i*8+8).every(v=>v===1)) rs.push(i);
+            let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
+            if(col.every(v=>v===1)) cs.push(i);
         }
-        rC.forEach(r => { for(let c=0; c<GRID_SIZE; c++) animateClear(r*GRID_SIZE+c); });
-        cC.forEach(c => { for(let r=0; r<GRID_SIZE; r++) animateClear(r*GRID_SIZE+c); });
-        if (rC.length > 0 || cC.length > 0) {
-            score += (rC.length + cC.length) * 10;
-            if (score > highScore) { highScore = score; localStorage.setItem('puzzleBest', highScore); }
+        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
+        cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
+        if(rs.length+cs.length > 0) {
+            score += (rs.length+cs.length)*10;
+            if(score > highScore) { highScore=score; localStorage.setItem('puzzleBest8x8', highScore); }
             updateScores();
         }
     }
 
-    function animateClear(idx) {
-        grid[idx] = 0;
-        const cell = document.getElementById('cell-' + idx);
-        cell.classList.add('clearing');
-        setTimeout(() => { cell.classList.remove('filled', 'clearing'); }, 300);
-    }
+    function animateClear(i) { grid[i]=0; const el=document.getElementById('cell-'+i); el.classList.add('clearing'); setTimeout(()=>{el.classList.remove('filled','clearing');},300); }
 
     function canAnyShapeBePlaced() {
-        return trayShapes.some((shape) => {
-            if (!shape) return false;
-            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
-                const r = Math.floor(i / GRID_SIZE), c = i % GRID_SIZE;
-                if (shape.every(p => {
-                    const nr = r + p[0], nc = c + p[1];
-                    return nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr * GRID_SIZE + nc] === 0;
-                })) return true;
+        return trayShapes.some(s => {
+            if(!s) return false;
+            for(let i=0; i<64; i++) {
+                const r=Math.floor(i/8), c=i%8;
+                if(s.every(p => { const nr=r+p[0], nc=c+p[1]; return nr<8&&nc<8&&grid[nr*8+nc]===0; })) return true;
             }
             return false;
-        }) || trayShapes.every(s => s === null);
-    }
-
-    // --- 퀴즈 로직 ---
-    let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
-    function startQuiz() {
-        curQuiz = 0; quizCorrect = 0;
-        sessionQuizzes = [...vocabulary].sort(() => 0.5 - Math.random()).slice(0, 3);
-        document.getElementById('quiz-modal').style.display = 'flex';
-        showQuestion();
-    }
-
-    function showQuestion() {
-        const q = sessionQuizzes[curQuiz];
-        document.getElementById('q-title').innerText = `검토 (${curQuiz + 1}/3)`;
-        document.getElementById('q-text').innerText = q.q;
-        document.getElementById('q-input').value = "";
-        document.getElementById('q-input').style.display = "block";
-        document.getElementById('q-feedback').innerText = "";
-        document.getElementById('q-submit').style.display = "block";
-        document.getElementById('q-next').style.display = "none";
-    }
-
-    function checkQuizAnswer() {
-        const input = document.getElementById('q-input').value.trim().replace(/\s/g, "");
-        const ans = sessionQuizzes[curQuiz].a.trim().replace(/\s/g, "");
-        if (input === ans) { 
-            quizCorrect++; 
-            document.getElementById('q-feedback').innerHTML = "<span style='color:var(--s)'>정답입니다! ✨</span>"; 
-        } else { 
-            document.getElementById('q-feedback').innerHTML = `<span style='color:var(--danger)'>오답! 정답:<br><small>${sessionQuizzes[curQuiz].a}</small></span>`; 
-        }
-        document.getElementById('q-submit').style.display = "none";
-        document.getElementById('q-next').style.display = "block";
-    }
-
-    function nextQuestion() {
-        curQuiz++;
-        if (curQuiz < 3) showQuestion();
-        else {
-            if (quizCorrect >= 2) { refillTray(); document.getElementById('quiz-modal').style.display = 'none'; }
-            else { alert("재도전!"); startQuiz(); }
-        }
+        }) || trayShapes.every(v=>v===null);
     }
 
     function addWord() {
-        const q = document.getElementById('new-q').value.trim();
-        const a = document.getElementById('new-a').value.trim();
-        if(q && a) {
-            vocabulary.push({q, a});
-            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
-            renderWordList();
-            document.getElementById('new-q').value = "";
-            document.getElementById('new-a').value = "";
-        }
+        const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
+        if(q&&a) { vocabulary.push({q,a}); localStorage.setItem('myVocab', JSON.stringify(vocabulary)); renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; }
     }
 
     function renderWordList() {
-        const list = document.getElementById('word-list');
-        list.innerHTML = vocabulary.map((item, idx) => `
-            <div class="word-card">
-                <div style="font-weight:bold; margin-bottom:5px;">${item.q}</div>
-                <div style="font-size:0.85rem; color:#666;">${item.a}</div>
-                <button onclick="deleteWord(${idx})" style="position:absolute; top:10px; right:10px; border:none; background:none; color:#ccc;">✕</button>
-            </div>
+        document.getElementById('word-list').innerHTML = vocabulary.map((v, i) => `
+            <div class="word-card"><b>${v.q}</b><br><small>${v.a}</small>
+            <button onclick="deleteWord(${i})" style="position:absolute;right:10px;top:10px;border:none;background:none;font-size:1.2rem;color:#ccc;">✕</button></div>
         `).join('');
     }
 
-    function deleteWord(idx) {
-        if(confirm("삭제할까요?")) {
-            vocabulary.splice(idx, 1);
-            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
-            renderWordList();
-        }
-    }
-
-    function confirmExit() { if(confirm("종료하시겠습니까?")) showScreen('home'); }
-
-    window.onload = () => { updateScores(); };
+    function deleteWord(i) { if(confirm("삭제할까요?")) { vocabulary.splice(i,1); localStorage.setItem('myVocab',JSON.stringify(vocabulary)); renderWordList(); } }
+    function confirmExit() { if(confirm("홈으로 나갈까요?")) showScreen('home'); }
+    window.onload = updateScores;
 </script>
 </body>
 </html>
+
