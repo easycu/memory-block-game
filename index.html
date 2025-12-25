@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v2.7</title>
+    <title>암기 퍼즐 PRO v2.7.1</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -205,10 +205,9 @@
         } else {
             document.getElementById('quiz-modal').style.display = 'none';
             window.scrollTo(0,0);
-            if (quizCorrect === 3) {
-                alert("Perfect! 3문제 모두 정답!\n황금색 1x1 보너스 블록이 지급됩니다.");
-                refillTray(3);
-            } else if (quizCorrect >= 2) {
+            
+            // 3문제 정답 시 알림 없이 즉시 refillTray 호출
+            if (quizCorrect >= 2) {
                 refillTray(quizCorrect);
             } else {
                 alert("불합격! 2문제 이상 맞춰야 합니다.");
@@ -219,14 +218,16 @@
 
     function refillTray(correctCount) {
         trayShapes = [0,1,2].map(() => {
-            const shape = [...SHAPES[Math.floor(Math.random()*SHAPES.length)]];
-            return shape; 
+            return [...SHAPES[Math.floor(Math.random()*SHAPES.length)]];
         });
+        
+        // 3문제 정답 시 조용히 첫 번째 칸을 황금 블록으로 교체
         if(correctCount === 3) {
             const bonusShape = [[0,0]];
             bonusShape.isBonus = true;
             trayShapes[0] = bonusShape; 
         }
+        
         renderTray();
         if(!canAnyShapeBePlaced()) { alert("게임 종료!"); showScreen('home'); }
     }
