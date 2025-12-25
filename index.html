@@ -3,225 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>주관식 암기 퍼즐</title>
+    <title>암기 퍼즐 프로 v2.2 (8x8)</title>
     <style>
-        :root {
-            --bg-color: #f8f9fa;
-            --grid-color: #e9ecef;
-            --block-color: #3498db;
-            --line-clear-color: #f1c40f;
-            --text-color: #2c3e50;
+        :root { 
+            --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
+            --preview: #e67e22; --danger: #e74c3c;
+        }
+        body { 
+            font-family: -apple-system, 'Pretendard', sans-serif; 
+            background: var(--bg); margin: 0; 
+            display: flex; flex-direction: column; align-items: center; 
+            height: 100vh; overflow: hidden; touch-action: none; 
+        }
+        
+        .screen { display: none; width: 100%; max-width: 450px; padding: 20px; box-sizing: border-box; height: 100%; flex-direction: column; }
+        .active { display: flex; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; width: 100%; }
+        .score-box { text-align: right; }
+        
+        /* 8x8 그리드 수정 */
+        #grid { 
+            display: grid; 
+            grid-template-columns: repeat(8, 1fr); 
+            gap: 5px; 
+            background: #cbd5e0; padding: 8px; border-radius: 12px; 
+            aspect-ratio: 1 / 1; width: 100%; box-sizing: border-box;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .cell { 
+            background: #edf2f7; border-radius: 5px; aspect-ratio: 1 / 1; 
+            transition: all 0.2s ease;
+        }
+        .cell.filled { background: var(--p); transform: scale(0.95); }
+        .cell.clearing { background: var(--s); transform: scale(1.1); }
+
+        #tray { 
+            display: flex; justify-content: space-around; align-items: center; 
+            height: 110px; margin: 20px 0; background: white; 
+            border-radius: 20px; padding: 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
+        }
+        .shape-preview { 
+            width: 90px; height: 90px; display: grid; 
+            grid-template-columns: repeat(4, 1fr); gap: 2px; 
+            border-radius: 10px; padding: 8px; box-sizing: border-box;
+            transition: transform 0.2s; border: 2px solid transparent;
+        }
+        .shape-preview.selected { border-color: var(--preview); transform: scale(1.05); background: #fffaf0; }
+        .preview-cell.filled { background: var(--p); border-radius: 2px; }
+
+        .menu-btn { 
+            width: 100%; padding: 16px; margin: 8px 0; border: none; 
+            border-radius: 15px; color: white; font-size: 1.1rem; 
+            cursor: pointer; font-weight: bold; transition: opacity 0.2s;
+        }
+        .btn-game { background: var(--p); }
+        .btn-manage { background: #9b59b6; }
+        
+        .word-list-container { flex: 1; overflow-y: auto; margin: 15px 0; padding-right: 5px; }
+        .word-card { 
+            background: white; padding: 15px; margin-bottom: 10px; 
+            border-radius: 12px; position: relative; border-left: 5px solid var(--p);
         }
 
-        body {
-            font-family: -apple-system, system-ui, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-            touch-action: none;
+        #quiz-modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); display: none; 
+            align-items: center; justify-content: center; z-index: 2000; padding: 20px; 
+        }
+        .modal-inner { 
+            background: white; padding: 30px; border-radius: 30px; 
+            width: 100%; max-width: 400px; text-align: center; 
         }
 
-        #game-container {
-            width: 100vw;
-            max-width: 450px;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--text-color);
-        }
-
-        /* 10x10 그리드 */
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 2px;
-            background-color: #bdc3c7;
-            padding: 4px;
-            border-radius: 8px;
-            aspect-ratio: 1;
-        }
-
-        .cell {
-            background-color: var(--grid-color);
-            border-radius: 2px;
-            transition: background-color 0.2s;
-        }
-
-        .cell.filled { background-color: var(--block-color); }
-        .cell.clearing { background-color: var(--line-clear-color); }
-
-        /* 하단 트레이 */
-        #tray {
-            margin-top: auto;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-around;
-            background: white;
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            height: 100px;
-        }
-
-        .shape-preview {
-            width: 80px;
-            height: 80px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px;
-        }
-
-        .preview-cell { background-color: transparent; }
-        .preview-cell.filled { background-color: var(--block-color); border-radius: 2px; }
-
-        /* 주관식 퀴즈 모달 */
-        #quiz-modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 20px;
-            width: 85%;
-            max-width: 350px;
-            text-align: center;
-        }
-
-        #quiz-question {
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-
-        #quiz-input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            margin-bottom: 15px;
-            outline: none;
-        }
-
-        #quiz-input:focus { border-color: var(--block-color); }
-
-        .submit-btn {
-            background: var(--block-color);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-size: 1rem;
-            width: 100%;
-        }
+        .file-ops { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-outline { flex: 1; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div class="header">
-        <span>점수: <span id="score">0</span></span>
-        <span>단어왕 도전 중!</span>
+    <div id="screen-home" class="screen active">
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+            <div style="font-size: 5rem; margin-bottom: 20px;">🧩</div>
+            <h1 style="color: #2c3e50; margin: 0;">암기 퍼즐 PRO</h1>
+            <p style="color: #7f8c8d;">8x8 보드에서 더 빠르게!</p>
+            <div style="background:white; padding:10px 30px; border-radius:20px; margin: 20px 0; font-weight:bold;">
+                최고 점수: <span id="high-score-home" style="color:var(--p)">0</span>
+            </div>
+        </div>
+        <button class="menu-btn btn-game" onclick="startGame()">게임 시작</button>
+        <button class="menu-btn btn-manage" onclick="showScreen('manage')">문제 관리</button>
     </div>
 
-    <div id="grid"></div>
-
-    <div id="tray">
-        <div id="shape-0" class="shape-preview" onclick="selectShape(0)"></div>
-        <div id="shape-1" class="shape-preview" onclick="selectShape(1)"></div>
-        <div id="shape-2" class="shape-preview" onclick="selectShape(2)"></div>
+    <div id="screen-game" class="screen">
+        <div class="header">
+            <button onclick="confirmExit()" style="padding:10px 18px; border-radius:12px; border:none; background:#e2e8f0; font-weight:bold;">🏠 나가기</button>
+            <div class="score-box">
+                <div style="font-size:0.75rem; color:#718096;">BEST <span id="high-score-game">0</span></div>
+                <div style="font-weight:900; font-size:1.5rem; color:var(--p)" id="score">0</div>
+            </div>
+        </div>
+        <div id="grid"></div>
+        <div id="tray">
+            <div id="shape-0" class="shape-preview" onclick="selectShape(0)"></div>
+            <div id="shape-1" class="shape-preview" onclick="selectShape(1)"></div>
+            <div id="shape-2" class="shape-preview" onclick="selectShape(2)"></div>
+        </div>
+        <p style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록 선택 후 보드를 터치하세요</p>
     </div>
-</div>
 
-<div id="quiz-modal">
-    <div class="modal-content">
-        <h3 id="quiz-title">복습 퀴즈 (1/3)</h3>
-        <p id="quiz-question">"사과"를 영어로 적으세요.</p>
-        <input type="text" id="quiz-input" placeholder="정답을 입력하세요" autocomplete="off">
-        <button class="submit-btn" onclick="submitAnswer()">제출</button>
+    <div id="screen-manage" class="screen">
+        <h2 style="margin: 10px 0;">문제 관리</h2>
+        <div style="background:white; padding:15px; border-radius:15px;">
+            <textarea id="new-q" style="width:100%; height:80px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제 입력"></textarea>
+            <textarea id="new-a" style="width:100%; height:60px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답 입력"></textarea>
+            <button onclick="addWord()" class="menu-btn btn-game" style="margin:0; padding:12px;">추가하기</button>
+            <div class="file-ops">
+                <button class="btn-outline" onclick="exportJSON()">📄 내보내기</button>
+                <button class="btn-outline" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
+            </div>
+            <input type="file" id="file-input" style="display:none" onchange="importJSON(event)" accept=".json">
+        </div>
+        <div class="word-list-container" id="word-list"></div>
+        <button class="menu-btn" style="background:#64748b;" onclick="showScreen('home')">돌아가기</button>
     </div>
-</div>
+
+    <div id="quiz-modal">
+        <div class="modal-inner">
+            <h2 id="q-title" style="color:var(--p); margin-top:0;">복습 타임!</h2>
+            <div id="q-text" style="background:#f8fafc; padding:20px; border-radius:15px; margin-bottom:20px; text-align:left; line-height:1.6;"></div>
+            <textarea id="q-input" style="width:100%; height:100px; padding:12px; border:2px solid #e2e8f0; border-radius:12px; margin-bottom:15px; box-sizing:border-box; font-size:1rem;" placeholder="정답을 입력하세요"></textarea>
+            <div id="q-feedback" style="margin-bottom:15px; font-weight:bold; min-height:24px;"></div>
+            <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0;">제출하기</button>
+            <button id="q-next" class="menu-btn btn-manage" style="display:none; margin:0;" onclick="nextQuestion()">다음 문제</button>
+        </div>
+    </div>
 
 <script>
-    const GRID_SIZE = 10;
+    // --- 8x8로 상수 변경 ---
+    const GRID_SIZE = 8;
+    const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
+    
     let score = 0;
-    let grid = Array(GRID_SIZE * GRID_SIZE).fill(0);
+    let highScore = localStorage.getItem('puzzleBest8x8') || 0;
+    let grid = Array(TOTAL_CELLS).fill(0);
     let trayShapes = [null, null, null];
     let selectedShapeIndex = null;
+    let lastPreviewIdx = null;
 
-    // 주관식 단어장 데이터
-    const vocabulary = [
-        { q: "사과를 뜻하는 영단어는?", a: "apple" },
-        { q: "'일관성'을 뜻하는 영단어는? (c로 시작)", a: "consistency" },
-        { q: "'지속하다'를 뜻하는 영단어는? (p로 시작)", a: "persist" },
-        { q: "'향상시키다'를 뜻하는 영단어는? (e로 시작)", a: "enhance" },
-        { q: "'부서지기 쉬운'을 뜻하는 영단어는? (f로 시작)", a: "fragile" },
-        { q: "바나나를 영어로?", a: "banana" }
+    let vocabulary = JSON.parse(localStorage.getItem('myVocab')) || [
+        { q: "민법 제1조", a: "민사에 관하여 법률에 규정이 없으면 관습법에 의하고 관습법이 없으면 조리에 의한다." }
     ];
-
-    let currentQuizIdx = 0;
-    let quizScore = 0;
-    let activeQuizzes = [];
 
     const shapes = [
-        [[0,0], [0,1], [1,0], [1,1]], // □
-        [[0,0], [0,1], [0,2]],        // ---
-        [[0,0], [1,0], [2,0]],        // |
-        [[0,0], [1,0], [1,1]],        // L
-        [[0,0], [0,1], [0,2], [0,3]], // ----
-        [[0,0], [1,0], [2,0], [3,0]], // | (4)
-        [[0,0]]                       // .
+        [[0,0], [0,1], [1,0], [1,1]], [[0,0], [1,0], [2,0]], [[0,0], [0,1], [0,2]],
+        [[0,0], [1,0], [1,1]], [[0,0], [0,1], [0,2], [0,3]], [[0,0], [1,0], [2,0], [3,0]],
+        [[0,1], [1,0], [1,1], [1,2]], [[0,0]], [[0,0], [0,1], [1,0]]
     ];
 
-    function init() {
-        const gridElement = document.getElementById('grid');
-        for (let i = 0; i < 100; i++) {
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-' + id).classList.add('active');
+        updateScores();
+        if(id === 'manage') renderWordList();
+    }
+
+    function updateScores() {
+        document.getElementById('high-score-home').innerText = highScore;
+        document.getElementById('high-score-game').innerText = highScore;
+        document.getElementById('score').innerText = score;
+    }
+
+    function exportJSON() {
+        if(vocabulary.length === 0) return alert("내보낼 데이터가 없습니다.");
+        const blob = new Blob([JSON.stringify(vocabulary, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `quiz_backup.json`;
+        a.click();
+    }
+
+    function importJSON(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = JSON.parse(evt.target.result);
+                if(Array.isArray(data)) { 
+                    vocabulary = data; 
+                    localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
+                    renderWordList(); 
+                    alert("불러오기 완료!"); 
+                }
+            } catch(err) { alert("오류 발생"); }
+        };
+        reader.readAsText(file);
+    }
+
+    function startGame() { 
+        if(vocabulary.length < 3) { alert("최소 3개의 문제가 필요합니다."); showScreen('manage'); return; }
+        showScreen('game'); initGame(); 
+    }
+
+    function initGame() {
+        score = 0; grid.fill(0); updateScores();
+        const gridEl = document.getElementById('grid');
+        gridEl.innerHTML = "";
+        for (let i = 0; i < TOTAL_CELLS; i++) {
             const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.onclick = () => placeShape(i);
-            gridElement.appendChild(cell);
+            cell.className = 'cell'; cell.id = 'cell-' + i;
+            cell.onclick = () => handleCellClick(i);
+            gridEl.appendChild(cell);
         }
         refillTray();
     }
 
     function refillTray() {
-        trayShapes = trayShapes.map(() => shapes[Math.floor(Math.random() * shapes.length)]);
+        trayShapes = [0, 1, 2].map(() => shapes[Math.floor(Math.random() * shapes.length)]);
         renderTray();
+        if(!canAnyShapeBePlaced()) { setTimeout(() => { alert("게임 오버!"); showScreen('home'); }, 500); }
     }
 
     function renderTray() {
         trayShapes.forEach((shape, i) => {
             const el = document.getElementById(`shape-${i}`);
-            el.innerHTML = '';
-            el.style.opacity = shape ? '1' : '0.2';
-            el.style.border = "none";
+            el.innerHTML = ""; el.style.opacity = shape ? "1" : "0.1";
+            el.className = 'shape-preview' + (selectedShapeIndex === i ? ' selected' : '');
             if (!shape) return;
-            for (let r=0; r<3; r++) {
-                for (let c=0; c<3; c++) {
+            for (let r=0; r<4; r++) {
+                for (let c=0; c<4; c++) {
                     const div = document.createElement('div');
                     div.className = 'preview-cell' + (shape.some(p => p[0]===r && p[1]===c) ? ' filled' : '');
                     el.appendChild(div);
@@ -230,118 +241,149 @@
         });
     }
 
-    function selectShape(i) {
-        if (!trayShapes[i]) return;
-        selectedShapeIndex = i;
-        document.querySelectorAll('.shape-preview').forEach(el => el.style.border = "none");
-        document.getElementById(`shape-${i}`).style.border = "2px solid #fa8231";
-    }
+    function selectShape(i) { if (!trayShapes[i]) return; clearPreview(); selectedShapeIndex = (selectedShapeIndex === i) ? null : i; renderTray(); }
 
-    function placeShape(idx) {
+    function handleCellClick(idx) {
         if (selectedShapeIndex === null) return;
         const shape = trayShapes[selectedShapeIndex];
-        const r = Math.floor(idx / 10), c = idx % 10;
-
-        const can = shape.every(p => {
+        const r = Math.floor(idx / GRID_SIZE), c = idx % GRID_SIZE;
+        let targets = [];
+        
+        const canPlace = shape.every(p => {
             const nr = r + p[0], nc = c + p[1];
-            return nr < 10 && nc < 10 && grid[nr * 10 + nc] === 0;
+            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr * GRID_SIZE + nc] === 0) {
+                targets.push(nr * GRID_SIZE + nc); return true;
+            }
+            return false;
         });
 
-        if (can) {
-            shape.forEach(p => {
-                const target = (r+p[0])*10 + (c+p[1]);
-                grid[target] = 1;
-                document.querySelectorAll('.cell')[target].classList.add('filled');
+        if (!canPlace) { clearPreview(); return; }
+
+        if (lastPreviewIdx === idx) {
+            targets.forEach(t => { 
+                grid[t] = 1; 
+                document.getElementById('cell-' + t).classList.add('filled');
             });
-            trayShapes[selectedShapeIndex] = null;
-            selectedShapeIndex = null;
-            renderTray();
-            checkAndClearLines();
-            if (trayShapes.every(s => s === null)) startQuizSession();
+            trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null;
+            clearPreview(); renderTray(); checkLines();
+            if (trayShapes.every(s => s === null)) { startQuiz(); }
+            else if (!canAnyShapeBePlaced()) { setTimeout(() => { alert("종료!"); showScreen('home'); }, 300); }
+        } else {
+            clearPreview(); lastPreviewIdx = idx;
+            targets.forEach(t => { document.getElementById('cell-' + t).style.boxShadow = "inset 0 0 0 4px var(--preview)"; });
         }
     }
 
-    // [중요] 가로세로 줄 체크 및 삭제 로직
-    function checkAndClearLines() {
-        let rowsToClear = [], colsToClear = [];
-        
-        for (let i=0; i<10; i++) {
-            if (Array.from({length:10}, (_, k) => grid[i*10 + k]).every(v => v === 1)) rowsToClear.push(i);
-            if (Array.from({length:10}, (_, k) => grid[k*10 + i]).every(v => v === 1)) colsToClear.push(i);
+    function clearPreview() { document.querySelectorAll('.cell').forEach(c => c.style.boxShadow = "none"); lastPreviewIdx = null; }
+
+    function checkLines() {
+        let rC = [], cC = [];
+        for (let i=0; i<GRID_SIZE; i++) {
+            if (grid.slice(i*GRID_SIZE, i*GRID_SIZE+GRID_SIZE).every(v => v === 1)) rC.push(i);
+            let col = []; for (let j=0; j<GRID_SIZE; j++) col.push(grid[j*GRID_SIZE + i]);
+            if (col.every(v => v === 1)) cC.push(i);
         }
-
-        rowsToClear.forEach(r => {
-            for(let c=0; c<10; c++) {
-                grid[r*10+c] = 0;
-                const cell = document.querySelectorAll('.cell')[r*10+c];
-                cell.classList.remove('filled');
-            }
-        });
-
-        colsToClear.forEach(c => {
-            for(let r=0; r<10; r++) {
-                grid[r*10+c] = 0;
-                const cell = document.querySelectorAll('.cell')[r*10+c];
-                cell.classList.remove('filled');
-            }
-        });
-
-        if (rowsToClear.length > 0 || colsToClear.length > 0) {
-            score += (rowsToClear.length + colsToClear.length) * 10;
-            document.getElementById('score').innerText = score;
+        rC.forEach(r => { for(let c=0; c<GRID_SIZE; c++) animateClear(r*GRID_SIZE+c); });
+        cC.forEach(c => { for(let r=0; r<GRID_SIZE; r++) animateClear(r*GRID_SIZE+c); });
+        if (rC.length > 0 || cC.length > 0) {
+            score += (rC.length + cC.length) * 10;
+            if (score > highScore) { highScore = score; localStorage.setItem('puzzleBest8x8', highScore); }
+            updateScores();
         }
     }
 
-    // 주관식 퀴즈 로직
-    function startQuizSession() {
-        currentQuizIdx = 0;
-        quizScore = 0;
-        activeQuizzes = [...vocabulary].sort(() => 0.5 - Math.random()).slice(0, 3);
+    function animateClear(idx) {
+        grid[idx] = 0;
+        const cell = document.getElementById('cell-' + idx);
+        cell.classList.add('clearing');
+        setTimeout(() => { cell.classList.remove('filled', 'clearing'); }, 300);
+    }
+
+    function canAnyShapeBePlaced() {
+        return trayShapes.some((shape) => {
+            if (!shape) return false;
+            for (let i = 0; i < TOTAL_CELLS; i++) {
+                const r = Math.floor(i / GRID_SIZE), c = i % GRID_SIZE;
+                if (shape.every(p => {
+                    const nr = r + p[0], nc = c + p[1];
+                    return nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr * GRID_SIZE + nc] === 0;
+                })) return true;
+            }
+            return false;
+        }) || trayShapes.every(s => s === null);
+    }
+
+    let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
+    function startQuiz() {
+        curQuiz = 0; quizCorrect = 0;
+        sessionQuizzes = [...vocabulary].sort(() => 0.5 - Math.random()).slice(0, 3);
         document.getElementById('quiz-modal').style.display = 'flex';
-        showQuiz();
+        showQuestion();
     }
 
-    function showQuiz() {
-        const quiz = activeQuizzes[currentQuizIdx];
-        document.getElementById('quiz-title').innerText = `복습 퀴즈 (${currentQuizIdx + 1}/3)`;
-        document.getElementById('quiz-question').innerText = quiz.q;
-        document.getElementById('quiz-input').value = '';
-        document.getElementById('quiz-input').focus();
+    function showQuestion() {
+        const q = sessionQuizzes[curQuiz];
+        document.getElementById('q-title').innerText = `검토 (${curQuiz + 1}/3)`;
+        document.getElementById('q-text').innerText = q.q;
+        document.getElementById('q-input').value = "";
+        document.getElementById('q-input').style.display = "block";
+        document.getElementById('q-feedback').innerText = "";
+        document.getElementById('q-submit').style.display = "block";
+        document.getElementById('q-next').style.display = "none";
     }
 
-    function submitAnswer() {
-        const userAns = document.getElementById('quiz-input').value.trim().toLowerCase();
-        const correctAns = activeQuizzes[currentQuizIdx].a.toLowerCase();
+    function checkQuizAnswer() {
+        const input = document.getElementById('q-input').value.trim().replace(/\s/g, "");
+        const ans = sessionQuizzes[curQuiz].a.trim().replace(/\s/g, "");
+        if (input === ans) { quizCorrect++; document.getElementById('q-feedback').innerHTML = "<span style='color:var(--s)'>정답입니다!</span>"; }
+        else { document.getElementById('q-feedback').innerHTML = `<span style='color:var(--danger)'>오답! 정답:<br><small>${sessionQuizzes[curQuiz].a}</small></span>`; }
+        document.getElementById('q-submit').style.display = "none";
+        document.getElementById('q-next').style.display = "block";
+    }
 
-        if (userAns === correctAns) quizScore++;
-        
-        currentQuizIdx++;
-        if (currentQuizIdx < 3) {
-            showQuiz();
-        } else {
-            finishQuiz();
+    function nextQuestion() {
+        curQuiz++;
+        if (curQuiz < 3) showQuestion();
+        else {
+            if (quizCorrect >= 2) { refillTray(); document.getElementById('quiz-modal').style.display = 'none'; }
+            else { alert("재도전!"); startQuiz(); }
         }
     }
 
-    // 엔터키 입력 지원
-    document.getElementById('quiz-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') submitAnswer();
-    });
-
-    function finishQuiz() {
-        if (quizScore >= 2) {
-            alert(`통과! ${quizScore}문제를 맞혔습니다. 블록이 리필됩니다.`);
-            refillTray();
-            document.getElementById('quiz-modal').style.display = 'none';
-        } else {
-            alert(`낙제! ${quizScore}문제만 맞혔습니다. 다시 도전하세요.`);
-            currentQuizIdx = 0;
-            quizScore = 0;
-            showQuiz();
+    function addWord() {
+        const q = document.getElementById('new-q').value.trim();
+        const a = document.getElementById('new-a').value.trim();
+        if(q && a) {
+            vocabulary.push({q, a});
+            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
+            renderWordList();
+            document.getElementById('new-q').value = "";
+            document.getElementById('new-a').value = "";
         }
     }
 
-    init();
+    function renderWordList() {
+        const list = document.getElementById('word-list');
+        list.innerHTML = vocabulary.map((item, idx) => `
+            <div class="word-card">
+                <div style="font-weight:bold; margin-bottom:5px;">${item.q}</div>
+                <div style="font-size:0.85rem; color:#666;">${item.a}</div>
+                <button onclick="deleteWord(${idx})" style="position:absolute; top:10px; right:10px; border:none; background:none; color:#ccc;">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function deleteWord(idx) {
+        if(confirm("삭제할까요?")) {
+            vocabulary.splice(idx, 1);
+            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
+            renderWordList();
+        }
+    }
+
+    function confirmExit() { if(confirm("종료하시겠습니까?")) showScreen('home'); }
+
+    window.onload = () => { updateScores(); };
 </script>
 </body>
-</html>
+</html
