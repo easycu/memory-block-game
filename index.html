@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v2.5</title>
+    <title>암기 퍼즐 PRO v2.6</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
-            --preview: #e67e22; --danger: #e74c3c;
+            --preview: #e67e22; --danger: #e74c3c; --bonus: #f1c40f;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
         
@@ -44,6 +44,7 @@
         }
         .cell { background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; transition: all 0.2s; }
         .cell.filled { background: var(--p); transform: scale(0.95); }
+        .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); }
         .cell.clearing { background: var(--s); transform: scale(1.1); }
 
         #tray { 
@@ -54,6 +55,7 @@
         .shape-preview { width: 80px; height: 80px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; border-radius: 10px; padding: 6px; border: 2px solid transparent; }
         .shape-preview.selected { border-color: var(--preview); transform: scale(1.1); background: #fffaf0; }
         .preview-cell.filled { background: var(--p); border-radius: 1.5px; }
+        .preview-cell.bonus { background: var(--bonus); border-radius: 1.5px; }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
         .btn-game { background: var(--p); }
@@ -142,6 +144,8 @@
 <script>
     const GRID_SIZE = 8;
     const TOTAL_CELLS = 64;
+    const SHAPES = [[[0,0],[0,1],[1,0],[1,1]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[1,1]],[[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],[[0,1],[1,0],[1,1],[1,2]],[[0,0]],[[0,0],[0,1],[1,0]]];
+    
     let score = 0, highScore = localStorage.getItem('puzzleBest8x8') || 0;
     let grid = Array(TOTAL_CELLS).fill(0), trayShapes = [null, null, null];
     let selectedShapeIndex = null, lastPreviewIdx = null;
@@ -163,7 +167,7 @@
 
     let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
     function startQuiz() {
-        if(vocabulary.length < 1) { refillTray(); return; }
+        if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
         sessionQuizzes = [...vocabulary].sort(() => Math.random() - 0.5).slice(0, 3);
         document.getElementById('quiz-modal').style.display = 'flex';
@@ -180,12 +184,10 @@
         document.getElementById('q-next').style.display = "none";
     }
 
-    // --- 핵심 수정 영역: 정답 시에도 텍스트 노출 ---
     function checkQuizAnswer() {
         const input = document.getElementById('q-input').value.trim().replace(/\s/g, "");
         const actualAns = sessionQuizzes[curQuiz].a;
         const processedAns = actualAns.trim().replace(/\s/g, "");
-        
         const feedbackEl = document.getElementById('q-feedback');
         
         if (input === processedAns) {
@@ -204,32 +206,98 @@
         else {
             document.getElementById('quiz-modal').style.display = 'none';
             window.scrollTo(0,0);
-            if (quizCorrect >= (sessionQuizzes.length >= 3 ? 2 : 1)) refillTray();
-            else { alert("불합격! 다시 퀴즈를 풉니다."); startQuiz(); }
+            // 모든 퀴즈 종료 후 결과에 따른 트레이 리필
+            refillTray(quizCorrect);
+            if (quizCorrect < (sessionQuizzes.length >= 3 ? 2 : 1)) {
+                alert("복습 부족! 보너스 블록이 지급되지 않았습니다.");
+            } else if (quizCorrect === 3) {
+                alert("Perfect! 1x1 보너스 블록이 지급되었습니다!");
+            }
         }
     }
 
-    function exportJSON() {
-        const blob = new Blob([JSON.stringify(vocabulary, null, 2)], {type: "application/json"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `quiz_backup.json`;
-        a.click();
+    // --- 핵심 추가 기능: 정답 수에 따른 리필 ---
+    function refillTray(correctCount) {
+        trayShapes = [0,1,2].map(() => SHAPES[Math.floor(Math.random()*SHAPES.length)]);
+        
+        // 3문제를 모두 맞힌 경우 첫 번째 블록을 1x1(SHAPES[7]) 보너스 블록으로 교체
+        if(correctCount === 3) {
+            trayShapes[0] = [[0,0]]; 
+            trayShapes[0].isBonus = true; // 보너스 표시를 위한 속성
+        }
+        
+        renderTray();
+        if(!canAnyShapeBePlaced()) { alert("게임 종료!"); showScreen('home'); }
     }
 
-    function importJSON(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            vocabulary = JSON.parse(evt.target.result);
-            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
-            renderWordList(); alert("불러오기 완료!");
-        };
-        reader.readAsText(file);
+    function renderTray() {
+        trayShapes.forEach((s, i) => {
+            const el = document.getElementById(`shape-${i}`);
+            el.innerHTML = ""; el.style.opacity = s ? "1" : "0.1";
+            el.className = 'shape-preview' + (selectedShapeIndex===i?' selected':'');
+            if(!s) return;
+            for(let r=0; r<4; r++) for(let c=0; c<4; c++) {
+                const div = document.createElement('div');
+                const isPart = s.some(p=>p[0]===r&&p[1]===c);
+                div.className = 'preview-cell' + (isPart ? (s.isBonus ? ' bonus' : ' filled') : '');
+                el.appendChild(div);
+            }
+        });
     }
 
-    const shapes = [[[0,0],[0,1],[1,0],[1,1]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[1,1]],[[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],[[0,1],[1,0],[1,1],[1,2]],[[0,0]],[[0,0],[0,1],[1,0]]];
+    function handleCellClick(idx) {
+        if(selectedShapeIndex === null) return;
+        const s = trayShapes[selectedShapeIndex], r = Math.floor(idx/8), c = idx%8;
+        let targets = [];
+        const fit = s.every(p => {
+            const nr=r+p[0], nc=c+p[1];
+            if(nr<8 && nc<8 && grid[nr*8+nc]===0) { targets.push(nr*8+nc); return true; }
+            return false;
+        });
+        if(!fit) return;
+        if(lastPreviewIdx === idx) {
+            targets.forEach(t => { 
+                grid[t] = s.isBonus ? 2 : 1; // 2는 보너스 블록 표시용
+                document.getElementById('cell-'+t).classList.add(s.isBonus ? 'bonus-filled' : 'filled'); 
+            });
+            trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null;
+            renderTray(); checkLines();
+            if(trayShapes.every(v => v === null)) startQuiz();
+        } else {
+            document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
+            targets.forEach(t => document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)");
+            lastPreviewIdx = idx;
+        }
+    }
+
+    function checkLines() {
+        let rs=[], cs=[];
+        for(let i=0; i<8; i++) {
+            if(grid.slice(i*8, i*8+8).every(v=>v>0)) rs.push(i);
+            let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
+            if(col.every(v=>v>0)) cs.push(i);
+        }
+        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
+        cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
+        if(rs.length+cs.length > 0) {
+            score += (rs.length+cs.length)*10;
+            if(score > highScore) { highScore=score; localStorage.setItem('puzzleBest8x8', highScore); }
+            updateScores();
+        }
+    }
+
+    function animateClear(i) { grid[i]=0; const el=document.getElementById('cell-'+i); el.classList.add('clearing'); setTimeout(()=>{el.classList.remove('filled','bonus-filled','clearing');},300); }
+
+    function canAnyShapeBePlaced() {
+        return trayShapes.some(s => {
+            if(!s) return false;
+            for(let i=0; i<64; i++) {
+                const r=Math.floor(i/8), c=i%8;
+                if(s.every(p => { const nr=r+p[0], nc=c+p[1]; return nr<8&&nc<8&&grid[nr*8+nc]===0; })) return true;
+            }
+            return false;
+        }) || trayShapes.every(v=>v===null);
+    }
 
     function startGame() { 
         if(vocabulary.length < 1) return alert("문제를 먼저 등록해주세요.");
@@ -246,95 +314,37 @@
             cell.onclick = () => handleCellClick(i);
             gridEl.appendChild(cell);
         }
-        refillTray();
-    }
-
-    function refillTray() {
-        trayShapes = [0,1,2].map(() => shapes[Math.floor(Math.random()*shapes.length)]);
-        renderTray();
-        if(!canAnyShapeBePlaced()) { alert("게임 종료!"); showScreen('home'); }
-    }
-
-    function renderTray() {
-        trayShapes.forEach((s, i) => {
-            const el = document.getElementById(`shape-${i}`);
-            el.innerHTML = ""; el.style.opacity = s ? "1" : "0.1";
-            el.className = 'shape-preview' + (selectedShapeIndex===i?' selected':'');
-            if(!s) return;
-            for(let r=0; r<4; r++) for(let c=0; c<4; c++) {
-                const div = document.createElement('div');
-                div.className = 'preview-cell' + (s.some(p=>p[0]===r&&p[1]===c)?' filled':'');
-                el.appendChild(div);
-            }
-        });
+        refillTray(0);
     }
 
     function selectShape(i) { if(trayShapes[i]) { selectedShapeIndex = i; renderTray(); } }
-
-    function handleCellClick(idx) {
-        if(selectedShapeIndex === null) return;
-        const s = trayShapes[selectedShapeIndex], r = Math.floor(idx/8), c = idx%8;
-        let targets = [];
-        const fit = s.every(p => {
-            const nr=r+p[0], nc=c+p[1];
-            if(nr<8 && nc<8 && grid[nr*8+nc]===0) { targets.push(nr*8+nc); return true; }
-            return false;
-        });
-        if(!fit) return;
-        if(lastPreviewIdx === idx) {
-            targets.forEach(t => { grid[t]=1; document.getElementById('cell-'+t).classList.add('filled'); });
-            trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null;
-            renderTray(); checkLines();
-            if(trayShapes.every(v => v === null)) startQuiz();
-        } else {
-            document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
-            targets.forEach(t => document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)");
-            lastPreviewIdx = idx;
-        }
-    }
-
-    function checkLines() {
-        let rs=[], cs=[];
-        for(let i=0; i<8; i++) {
-            if(grid.slice(i*8, i*8+8).every(v=>v===1)) rs.push(i);
-            let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
-            if(col.every(v=>v===1)) cs.push(i);
-        }
-        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
-        cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
-        if(rs.length+cs.length > 0) {
-            score += (rs.length+cs.length)*10;
-            if(score > highScore) { highScore=score; localStorage.setItem('puzzleBest8x8', highScore); }
-            updateScores();
-        }
-    }
-
-    function animateClear(i) { grid[i]=0; const el=document.getElementById('cell-'+i); el.classList.add('clearing'); setTimeout(()=>{el.classList.remove('filled','clearing');},300); }
-
-    function canAnyShapeBePlaced() {
-        return trayShapes.some(s => {
-            if(!s) return false;
-            for(let i=0; i<64; i++) {
-                const r=Math.floor(i/8), c=i%8;
-                if(s.every(p => { const nr=r+p[0], nc=c+p[1]; return nr<8&&nc<8&&grid[nr*8+nc]===0; })) return true;
-            }
-            return false;
-        }) || trayShapes.every(v=>v===null);
-    }
-
     function addWord() {
         const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
         if(q&&a) { vocabulary.push({q,a}); localStorage.setItem('myVocab', JSON.stringify(vocabulary)); renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; }
     }
-
     function renderWordList() {
         document.getElementById('word-list').innerHTML = vocabulary.map((v, i) => `
             <div class="word-card"><b>${v.q}</b><br><small>${v.a}</small>
             <button onclick="deleteWord(${i})" style="position:absolute;right:10px;top:10px;border:none;background:none;font-size:1.2rem;color:#ccc;">✕</button></div>
         `).join('');
     }
-
     function deleteWord(i) { if(confirm("삭제할까요?")) { vocabulary.splice(i,1); localStorage.setItem('myVocab',JSON.stringify(vocabulary)); renderWordList(); } }
+    function exportJSON() {
+        const blob = new Blob([JSON.stringify(vocabulary, null, 2)], {type: "application/json"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `quiz_backup.json`; a.click();
+    }
+    function importJSON(e) {
+        const file = e.target.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            vocabulary = JSON.parse(evt.target.result);
+            localStorage.setItem('myVocab', JSON.stringify(vocabulary));
+            renderWordList(); alert("불러오기 완료!");
+        };
+        reader.readAsText(file);
+    }
     function confirmExit() { if(confirm("홈으로 나갈까요?")) showScreen('home'); }
     window.onload = updateScores;
 </script>
