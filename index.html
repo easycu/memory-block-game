@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v2.6</title>
+    <title>암기 퍼즐 PRO v2.7</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -44,7 +44,7 @@
         }
         .cell { background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; transition: all 0.2s; }
         .cell.filled { background: var(--p); transform: scale(0.95); }
-        .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); }
+        .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); }
 
         #tray { 
@@ -154,8 +154,7 @@
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('screen-' + id).classList.add('active');
-        window.scrollTo(0, 0); 
-        updateScores();
+        window.scrollTo(0, 0); updateScores();
         if(id === 'manage') renderWordList();
     }
 
@@ -189,7 +188,6 @@
         const actualAns = sessionQuizzes[curQuiz].a;
         const processedAns = actualAns.trim().replace(/\s/g, "");
         const feedbackEl = document.getElementById('q-feedback');
-        
         if (input === processedAns) {
             quizCorrect++;
             feedbackEl.innerHTML = `<span style='color:var(--s)'>정답입니다! ✨<br>정답: ${actualAns}</span>`;
@@ -202,30 +200,33 @@
 
     function nextQuestion() {
         curQuiz++;
-        if (curQuiz < sessionQuizzes.length) showQuestion();
-        else {
+        if (curQuiz < sessionQuizzes.length) {
+            showQuestion();
+        } else {
             document.getElementById('quiz-modal').style.display = 'none';
             window.scrollTo(0,0);
-            // 모든 퀴즈 종료 후 결과에 따른 트레이 리필
-            refillTray(quizCorrect);
-            if (quizCorrect < (sessionQuizzes.length >= 3 ? 2 : 1)) {
-                alert("복습 부족! 보너스 블록이 지급되지 않았습니다.");
-            } else if (quizCorrect === 3) {
-                alert("Perfect! 1x1 보너스 블록이 지급되었습니다!");
+            if (quizCorrect === 3) {
+                alert("Perfect! 3문제 모두 정답!\n황금색 1x1 보너스 블록이 지급됩니다.");
+                refillTray(3);
+            } else if (quizCorrect >= 2) {
+                refillTray(quizCorrect);
+            } else {
+                alert("불합격! 2문제 이상 맞춰야 합니다.");
+                startQuiz();
             }
         }
     }
 
-    // --- 핵심 추가 기능: 정답 수에 따른 리필 ---
     function refillTray(correctCount) {
-        trayShapes = [0,1,2].map(() => SHAPES[Math.floor(Math.random()*SHAPES.length)]);
-        
-        // 3문제를 모두 맞힌 경우 첫 번째 블록을 1x1(SHAPES[7]) 보너스 블록으로 교체
+        trayShapes = [0,1,2].map(() => {
+            const shape = [...SHAPES[Math.floor(Math.random()*SHAPES.length)]];
+            return shape; 
+        });
         if(correctCount === 3) {
-            trayShapes[0] = [[0,0]]; 
-            trayShapes[0].isBonus = true; // 보너스 표시를 위한 속성
+            const bonusShape = [[0,0]];
+            bonusShape.isBonus = true;
+            trayShapes[0] = bonusShape; 
         }
-        
         renderTray();
         if(!canAnyShapeBePlaced()) { alert("게임 종료!"); showScreen('home'); }
     }
@@ -239,7 +240,7 @@
             for(let r=0; r<4; r++) for(let c=0; c<4; c++) {
                 const div = document.createElement('div');
                 const isPart = s.some(p=>p[0]===r&&p[1]===c);
-                div.className = 'preview-cell' + (isPart ? (s.isBonus ? ' bonus' : ' filled') : '');
+                div.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
                 el.appendChild(div);
             }
         });
@@ -257,10 +258,10 @@
         if(!fit) return;
         if(lastPreviewIdx === idx) {
             targets.forEach(t => { 
-                grid[t] = s.isBonus ? 2 : 1; // 2는 보너스 블록 표시용
-                document.getElementById('cell-'+t).classList.add(s.isBonus ? 'bonus-filled' : 'filled'); 
+                grid[t] = 1; 
+                document.getElementById('cell-'+t).className = s.isBonus ? 'cell bonus-filled' : 'cell filled';
             });
-            trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null;
+            trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null; lastPreviewIdx = null;
             renderTray(); checkLines();
             if(trayShapes.every(v => v === null)) startQuiz();
         } else {
@@ -273,9 +274,9 @@
     function checkLines() {
         let rs=[], cs=[];
         for(let i=0; i<8; i++) {
-            if(grid.slice(i*8, i*8+8).every(v=>v>0)) rs.push(i);
+            if(grid.slice(i*8, i*8+8).every(v=>v===1)) rs.push(i);
             let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
-            if(col.every(v=>v>0)) cs.push(i);
+            if(col.every(v=>v===1)) cs.push(i);
         }
         rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
         cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
@@ -286,7 +287,12 @@
         }
     }
 
-    function animateClear(i) { grid[i]=0; const el=document.getElementById('cell-'+i); el.classList.add('clearing'); setTimeout(()=>{el.classList.remove('filled','bonus-filled','clearing');},300); }
+    function animateClear(i) { 
+        grid[i]=0; 
+        const el=document.getElementById('cell-'+i); 
+        el.classList.add('clearing'); 
+        setTimeout(()=>{ el.className = 'cell'; }, 300); 
+    }
 
     function canAnyShapeBePlaced() {
         return trayShapes.some(s => {
@@ -299,11 +305,7 @@
         }) || trayShapes.every(v=>v===null);
     }
 
-    function startGame() { 
-        if(vocabulary.length < 1) return alert("문제를 먼저 등록해주세요.");
-        showScreen('game'); initGame(); 
-    }
-
+    function startGame() { if(vocabulary.length < 1) return alert("문제를 먼저 등록해주세요."); showScreen('game'); initGame(); }
     function initGame() {
         score = 0; grid.fill(0); updateScores();
         const gridEl = document.getElementById('grid');
@@ -316,7 +318,6 @@
         }
         refillTray(0);
     }
-
     function selectShape(i) { if(trayShapes[i]) { selectedShapeIndex = i; renderTray(); } }
     function addWord() {
         const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
