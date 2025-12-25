@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v2.7.1</title>
+    <title>암기 퍼즐 PRO v2.8</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -205,8 +205,6 @@
         } else {
             document.getElementById('quiz-modal').style.display = 'none';
             window.scrollTo(0,0);
-            
-            // 3문제 정답 시 알림 없이 즉시 refillTray 호출
             if (quizCorrect >= 2) {
                 refillTray(quizCorrect);
             } else {
@@ -220,16 +218,13 @@
         trayShapes = [0,1,2].map(() => {
             return [...SHAPES[Math.floor(Math.random()*SHAPES.length)]];
         });
-        
-        // 3문제 정답 시 조용히 첫 번째 칸을 황금 블록으로 교체
         if(correctCount === 3) {
             const bonusShape = [[0,0]];
             bonusShape.isBonus = true;
             trayShapes[0] = bonusShape; 
         }
-        
         renderTray();
-        if(!canAnyShapeBePlaced()) { alert("게임 종료!"); showScreen('home'); }
+        checkGameOver(); // 리필 직후 둘 곳이 없는지 확인
     }
 
     function renderTray() {
@@ -264,7 +259,12 @@
             });
             trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null; lastPreviewIdx = null;
             renderTray(); checkLines();
-            if(trayShapes.every(v => v === null)) startQuiz();
+            
+            if(trayShapes.every(v => v === null)) {
+                startQuiz();
+            } else {
+                checkGameOver(); // 블록 하나를 놓을 때마다 남은 것들을 둘 수 있는지 확인
+            }
         } else {
             document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
             targets.forEach(t => document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)");
@@ -295,15 +295,26 @@
         setTimeout(()=>{ el.className = 'cell'; }, 300); 
     }
 
-    function canAnyShapeBePlaced() {
-        return trayShapes.some(s => {
+    // --- 게임오버 판정 로직 강화 ---
+    function checkGameOver() {
+        const canPlaceAny = trayShapes.some(s => {
             if(!s) return false;
             for(let i=0; i<64; i++) {
                 const r=Math.floor(i/8), c=i%8;
-                if(s.every(p => { const nr=r+p[0], nc=c+p[1]; return nr<8&&nc<8&&grid[nr*8+nc]===0; })) return true;
+                const fit = s.every(p => {
+                    const nr=r+p[0], nc=c+p[1];
+                    return nr<8 && nc<8 && grid[nr*8+nc] === 0;
+                });
+                if(fit) return true;
             }
             return false;
-        }) || trayShapes.every(v=>v===null);
+        });
+
+        // 트레이가 비어있는 경우는 퀴즈 대기 상태이므로 무시, 트레이에 블록이 있는데 둘 곳이 없으면 게임오버
+        if(!canPlaceAny && !trayShapes.every(v => v === null)) {
+            alert("더 이상 블록을 둘 곳이 없습니다! 게임 종료.\n최종 점수: " + score);
+            showScreen('home');
+        }
     }
 
     function startGame() { if(vocabulary.length < 1) return alert("문제를 먼저 등록해주세요."); showScreen('game'); initGame(); }
