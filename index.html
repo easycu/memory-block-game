@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v5.1</title>
+    <title>암기 퍼즐 PRO v5.2</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -70,7 +70,8 @@
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
-        /* 고스트 블록 스타일 (v5.1: 명확한 가이드) */
+        
+        /* 고스트 블록 스타일 */
         .cell.ghost { background: var(--p); opacity: 0.6; transform: scale(0.95); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.7); }
         .cell.ghost-bonus { background: var(--bonus); opacity: 0.6; transform: scale(0.95); }
 
@@ -86,12 +87,12 @@
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
-        /* 드래그 헬퍼 (따라다니는 블록) */
+        /* 드래그 헬퍼 */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
             display: none; 
             opacity: 0.9; 
-            /* transform 제거: JS에서 정밀 계산 */
+            transform: translate(-50%, -100%); /* 바닥 중앙 기준 */
         }
         #drag-helper .preview-cell { background: transparent; } 
         #drag-helper .preview-cell.filled, 
@@ -151,7 +152,7 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요 (손가락 위에 표시됨)</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -251,10 +252,9 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    // v5.1 수정: 시야 확보를 위한 75px 간격 (손가락 가림 방지)
     const TOUCH_OFFSET = 75; 
-    let anchorRow = 0; // 드래그 중인 블록의 '잡는 기준' 행
-    let anchorCol = 0; // 드래그 중인 블록의 '잡는 기준' 열
+    let anchorRow = 0; 
+    let anchorCol = 0; 
 
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -268,7 +268,7 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 로직 ---
+    // --- 퀴즈 로직 (유지) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
@@ -344,7 +344,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v5.1 (핀포인트 정렬 엔진) ---
+    // --- 드래그 앤 드롭 시스템 v5.2 (유효성 검사 & 핀포인트 정렬) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -380,15 +380,13 @@
         const cellRect = document.querySelector('.cell').getBoundingClientRect();
         const cellSize = cellRect.width;
 
-        // v5.1: 핀포인트 앵커 계산 (블록의 '맨 아래' & '중앙' 칸 찾기)
         let minR=5, maxR=-1, minC=5, maxC=-1;
         s.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
         
-        // 앵커 포인트: 모양의 바닥행(maxR) + 수평중앙열(반올림)
-        // 이 '특정 칸'이 손가락 위(OFFSET 지점)에 오게 됨
+        // 앵커: 바닥 중앙
         anchorR = maxR;
         anchorC = Math.round((minC + maxC) / 2);
 
@@ -415,6 +413,7 @@
         moveHelper(e);
         e.currentTarget.classList.add('dragging');
         playSound('click');
+        ghostIndices = []; // 시작 시 초기화
     }
 
     function handleTouchMove(e) {
@@ -443,26 +442,19 @@
         const helper = document.getElementById('drag-helper');
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        
         const cellRect = document.querySelector('.cell').getBoundingClientRect();
         const cellSize = cellRect.width;
         const s = trayShapes[dragShapeIndex];
         
-        // 헬퍼의 바운딩 박스 계산 (다시 필요함)
         let minR=5, maxR=-1, minC=5, maxC=-1;
         s.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
 
-        // v5.1 정밀 보정:
-        // 앵커 칸의 중심이 (cx, cy - offset)에 오도록 Helper의 left/top 계산
-        // 앵커 칸은 Helper 내부에서 (anchorR - minR, anchorC - minC) 위치에 있음
-        
         const relAnchorR = anchorR - minR;
         const relAnchorC = anchorC - minC;
         
-        // (cx, cy - offset) = helperLeft + (relAnchorC * size + size/2), helperTop + (relAnchorR * size + size/2)
         const targetX = cx;
         const targetY = cy - TOUCH_OFFSET;
         
@@ -474,10 +466,13 @@
     }
 
     function updateGhost(e) {
+        // v5.2: 매 프레임마다 유효성 상태 초기화 (중요!)
+        clearGhost();
+        ghostIndices = [];
+
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // 탐지 지점도 정확히 (cx, cy - offset)
         const targetY = cy - TOUCH_OFFSET; 
 
         const helper = document.getElementById('drag-helper');
@@ -485,17 +480,13 @@
         const el = document.elementFromPoint(cx, targetY);
         helper.style.display = 'grid';
 
-        clearGhost();
+        if(!el || !el.classList.contains('cell')) return; // 밖으로 나가면 빈 상태 유지
 
-        if(!el || !el.classList.contains('cell')) return;
-
-        // 타겟 셀 = 우리가 잡고 있는 '앵커 칸'이 놓일 곳
         const targetIdx = parseInt(el.id.split('-')[1]);
         const tR = Math.floor(targetIdx / 8);
         const tC = targetIdx % 8;
         const s = trayShapes[dragShapeIndex];
 
-        // 배치 원점(0,0) 계산: 타겟 셀에서 앵커 칸의 상대 좌표를 뺌
         const shiftR = tR - anchorR;
         const shiftC = tC - anchorC;
         
