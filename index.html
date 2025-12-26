@@ -3,18 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v5.8</title>
+    <title>암기 퍼즐 PRO v6.0</title>
     <style>
         :root { 
-            --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
-            --preview: #e67e22; --danger: #e74c3c; --bonus: #f1c40f;
-            --excel: #27ae60;
+            /* v6.0 테마: 아이 컴포트 그린 (Eye Comfort Green) */
+            --p: #2e7d32;       /* 메인 블록: 짙은 숲색 (Forest Green) */
+            --s: #66bb6a;       /* 클리어 효과: 밝은 초록 */
+            --bg: #e8f5e9;      /* 배경: 아주 옅은 민트 (Mint Cream) */
+            --grid-bg: #a5d6a7; /* 그리드 배경: 쑥색 */
+            --cell-bg: #c8e6c9; /* 빈 칸: 옅은 쑥색 */
+            
+            --preview: #ffa726; /* 프리뷰 트레이 강조 (오렌지) */
+            --danger: #ef5350;  /* 경고 (부드러운 빨강) */
+            --bonus: #fdd835;   /* 보너스 (노랑) */
+            --excel: #1b5e20;   /* 엑셀 버튼 (진한 녹색) */
+            --text-main: #1b5e20; /* 메인 텍스트 (진한 녹색) */
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }
         
         body { 
             font-family: -apple-system, 'Pretendard', sans-serif; 
             background: var(--bg);
+            color: var(--text-main);
             width: 100vw; height: 100dvh;
             display: flex; flex-direction: column; align-items: center; 
             overflow: hidden; touch-action: none; 
@@ -27,6 +37,7 @@
         }
         .active { display: flex; }
         
+        /* 애니메이션 등 유틸리티 */
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -52,6 +63,7 @@
             100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
         }
 
+        /* 레이아웃 */
         .header { 
             display: flex; justify-content: space-between; align-items: center; 
             padding: 10px 0; min-height: 70px; width: 100%;
@@ -63,66 +75,78 @@
         }
         #grid { 
             display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; 
-            background: #cbd5e0; padding: 6px; border-radius: 12px; 
+            background: var(--grid-bg); padding: 6px; border-radius: 12px; 
             width: 100%; aspect-ratio: 1 / 1;
             transition: transform 0.1s;
         }
-        .cell { background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; transition: all 0.2s; }
-        .cell.filled { background: var(--p); transform: scale(0.95); }
+        .cell { background: var(--cell-bg); border-radius: 4px; aspect-ratio: 1 / 1; transition: all 0.2s; }
+        .cell.filled { background: var(--p); transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
         
-        .cell.ghost { background: var(--p); opacity: 0.6; transform: scale(0.95); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.7); }
-        .cell.ghost-bonus { background: var(--bonus); opacity: 0.6; transform: scale(0.95); }
+        /* 고스트 블록: 색상을 조금 더 진하게 하여 가시성 확보 */
+        .cell.ghost { background: var(--p); opacity: 0.4; transform: scale(0.95); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5); }
+        .cell.ghost-bonus { background: var(--bonus); opacity: 0.5; transform: scale(0.95); }
 
         #tray { 
             display: flex; justify-content: center; align-items: center; gap: 8px;
             height: 110px; margin-bottom: 15px; background: white; 
             border-radius: 20px; padding: 10px; width: 100%;
-            touch-action: none; 
+            touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
-        .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; transition: opacity 0.2s, visibility 0.2s; }
+        .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fff; transition: opacity 0.2s, visibility 0.2s; }
         .shape-preview.dragging { opacity: 0; visibility: hidden; } 
         .preview-cell { aspect-ratio: 1/1; }
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
+        /* v6.0: 드래그 헬퍼 (진한 색상 + 불투명) */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
-            display: none; opacity: 0.9;
+            display: none; 
+            opacity: 1.0; /* 투명도 제거: 실체감 있게 */
             margin: 0; padding: 0;
+            filter: drop-shadow(0 15px 15px rgba(0,0,0,0.3)); /* 그림자 강화 */
         }
         #drag-helper .preview-cell { background: transparent; } 
-        #drag-helper .preview-cell.filled, 
+        #drag-helper .preview-cell.filled { 
+            background: var(--p);
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.2); /* 약간의 입체감 */
+        }
         #drag-helper .preview-cell.bonus { 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.25); border-radius: 4px;
+            background: var(--bonus);
+            border-radius: 4px;
         }
 
-        .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
+        .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn-game { background: var(--p); }
-        .btn-manage { background: #9b59b6; }
+        .btn-manage { background: #8d6e63; } /* 브라운 톤으로 변경 (그린과 어울림) */
         
         .word-list-container { flex: 1; overflow-y: auto; margin: 15px 0; width: 100%; }
         .word-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; position: relative; border-left: 5px solid var(--p); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
         #quiz-modal { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; 
-            background: rgba(0,0,0,0.9); display: none; 
+            background: rgba(0,0,0,0.8); display: none; 
             align-items: center; justify-content: center; z-index: 9999; padding: 20px; 
+            backdrop-filter: blur(5px); /* 배경 블러 효과 */
         }
         .modal-inner { 
             background: white; padding: 25px; border-radius: 25px; 
             width: 100%; max-width: 360px;
             display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
-        #q-input { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin-bottom: 15px; resize: none; }
-        #q-text { width: 100%; background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: left; font-size: 0.95rem; line-height: 1.5; max-height: 150px; overflow-y: auto; }
+        #q-input { width: 100%; height: 100px; padding: 12px; border: 2px solid var(--grid-bg); border-radius: 12px; font-size: 1rem; margin-bottom: 15px; resize: none; outline: none; }
+        #q-input:focus { border-color: var(--p); }
+        #q-text { width: 100%; background: var(--bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: left; font-size: 0.95rem; line-height: 1.5; max-height: 150px; overflow-y: auto; color: var(--text-main); font-weight: 500; }
 
         .file-ops { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 10px; }
-        .btn-outline { flex: 1; min-width: 45%; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
-        .btn-append { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
+        .btn-outline { flex: 1; min-width: 45%; background: white; color: var(--text-main); border: 1px solid #ccc; padding: 10px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
+        .btn-append { background: #e8f5e9; border-color: var(--p); color: var(--p); }
         
-        #excel-area { display: none; width: 100%; background: #f0fff4; padding: 10px; border-radius: 10px; border: 2px dashed var(--excel); margin-bottom: 15px; }
+        #excel-area { display: none; width: 100%; background: #fff; padding: 10px; border-radius: 10px; border: 2px dashed var(--excel); margin-bottom: 15px; }
         #excel-input { width: 100%; height: 100px; font-family: monospace; white-space: pre; padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 0.8rem; margin-bottom: 5px; }
 
         #toast-container {
@@ -130,7 +154,8 @@
             z-index: 9999; pointer-events: none; width: 100%; display: flex; justify-content: center;
         }
         .toast {
-            background: rgba(30, 30, 30, 0.9); color: white; padding: 12px 24px;
+            background: rgba(46, 125, 50, 0.95); /* 토스트 기본색도 그린 */
+            color: white; padding: 12px 24px;
             border-radius: 30px; font-size: 0.95rem; font-weight: bold;
             opacity: 0; transition: opacity 0.3s, transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
             transform: translateY(20px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
@@ -138,8 +163,8 @@
         }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { background: rgba(231, 76, 60, 0.95); }
-        .toast.success { background: rgba(46, 204, 113, 0.95); }
-        .toast.info { background: rgba(52, 152, 219, 0.95); }
+        .toast.success { background: rgba(67, 160, 71, 0.95); }
+        .toast.info { background: rgba(30, 136, 229, 0.95); }
     </style>
 </head>
 <body>
@@ -149,8 +174,8 @@
     <div id="screen-home" class="screen active">
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
             <div style="font-size: 4.5rem; margin-bottom: 15px;">🧩</div>
-            <h1 style="color: #2c3e50;">암기 퍼즐 PRO</h1>
-            <div style="background:white; padding:10px 25px; border-radius:15px; margin: 20px 0; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            <h1 style="color: var(--text-main);">암기 퍼즐 PRO</h1>
+            <div style="background:white; padding:10px 25px; border-radius:15px; margin: 20px 0; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.05); color: var(--text-main);">
                 최고 점수: <span id="high-score-home" style="color:var(--p)">0</span>
             </div>
         </div>
@@ -162,19 +187,19 @@
 
     <div id="screen-game" class="screen">
         <div class="header">
-            <button onclick="confirmExit()" style="padding:8px 15px; border-radius:10px; border:none; background:#fff; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.1); font-size: 0.9rem;">🏠 홈</button>
+            <button onclick="confirmExit()" style="padding:8px 15px; border-radius:10px; border:none; background:#fff; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.1); font-size: 0.9rem; color: var(--text-main);">🏠 홈</button>
             <div class="score-box">
-                <div style="font-size:0.7rem; color:#718096; font-weight: bold;">BEST <span id="high-score-game">0</span></div>
+                <div style="font-size:0.7rem; color:#666; font-weight: bold;">BEST <span id="high-score-game">0</span></div>
                 <div style="font-weight:900; font-size:1.5rem; color:var(--p)" id="score">0</div>
             </div>
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
+        <p style="font-size: 0.75rem; color: #888; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
     </div>
 
     <div id="screen-manage" class="screen">
-        <h2 style="margin: 15px 0;">문제 관리</h2>
+        <h2 style="margin: 15px 0; color: var(--text-main);">문제 관리</h2>
         <div style="background:white; padding:15px; border-radius:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
             <div style="display:flex; gap:5px;">
                 <textarea id="new-q" style="flex:1; height:60px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제"></textarea>
@@ -197,7 +222,7 @@
             <input type="file" id="file-input" style="display:none" onchange="handleFile(event)" accept=".json">
         </div>
         <div class="word-list-container" id="word-list"></div>
-        <button class="menu-btn" style="background:#64748b; margin-top: auto;" onclick="showScreen('home')">돌아가기</button>
+        <button class="menu-btn" style="background:#8d6e63; margin-top: auto;" onclick="showScreen('home')">돌아가기</button>
     </div>
 
     <div id="quiz-modal">
@@ -212,569 +237,147 @@
     </div>
 
 <script>
+    // --- 유틸리티: 토스트 메시지 ---
     function showToast(msg, type='normal') {
         const container = document.getElementById('toast-container');
         const el = document.createElement('div');
         el.className = `toast ${type}`;
         el.innerText = msg;
         container.appendChild(el);
-        void el.offsetWidth; 
-        el.classList.add('show');
-        setTimeout(() => {
-            el.classList.remove('show');
-            setTimeout(() => el.remove(), 300);
-        }, 2000); 
+        void el.offsetWidth; el.classList.add('show');
+        setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2000); 
     }
 
+    // --- 오디오 ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioContext = null;
-
-    function initAudio() {
-        if (!audioContext) audioContext = new AudioCtx();
-        if (audioContext.state === 'suspended') audioContext.resume();
-    }
-
+    function initAudio() { if (!audioContext) audioContext = new AudioCtx(); if (audioContext.state === 'suspended') audioContext.resume(); }
     const soundTypes = {
-        click: (t) => {
-            const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
-            osc.frequency.setValueAtTime(600, t); osc.frequency.exponentialRampToValueAtTime(300, t + 0.1);
-            gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.connect(gain); gain.connect(audioContext.destination); osc.start(t); osc.stop(t + 0.1);
-        },
-        place: (t) => {
-            const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
-            osc.frequency.setValueAtTime(200, t); osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.type = 'triangle'; osc.connect(gain); gain.connect(audioContext.destination); osc.start(t); osc.stop(t + 0.15);
-        },
-        clear: (t) => {
-            const notes = [523.25, 659.25, 783.99, 1046.50];
-            notes.forEach((freq, i) => {
-                const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
-                osc.frequency.value = freq; const time = t + i * 0.05;
-                gain.gain.setValueAtTime(0.1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-                osc.connect(gain); gain.connect(audioContext.destination); osc.start(time); osc.stop(time + 0.3);
-            });
-        },
-        correct: (t) => {
-            [523.25, 659.25, 783.99].forEach((f,i) => {
-                const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
-                osc.frequency.value = f; osc.type = 'sine';
-                gain.gain.setValueAtTime(0.1, t + i*0.1); gain.gain.linearRampToValueAtTime(0, t + i*0.1 + 0.4);
-                osc.connect(gain); gain.connect(audioContext.destination); osc.start(t + i*0.1); osc.stop(t + i*0.1 + 0.4);
-            });
-        },
-        wrong: (t) => {
-            const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(100, t + 0.3);
-            gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.3);
-            osc.connect(gain); gain.connect(audioContext.destination); osc.start(t); osc.stop(t + 0.3);
-        }
+        click: (t) => { const o=audioContext.createOscillator(),g=audioContext.createGain(); o.frequency.setValueAtTime(600,t); o.frequency.exponentialRampToValueAtTime(300,t+0.1); g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.1); o.connect(g); g.connect(audioContext.destination); o.start(t); o.stop(t+0.1); },
+        place: (t) => { const o=audioContext.createOscillator(),g=audioContext.createGain(); o.frequency.setValueAtTime(200,t); o.frequency.exponentialRampToValueAtTime(50,t+0.1); g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.1); o.type='triangle'; o.connect(g); g.connect(audioContext.destination); o.start(t); o.stop(t+0.15); },
+        clear: (t) => { const notes=[523.25,659.25,783.99,1046.50]; notes.forEach((f,i)=>{ const o=audioContext.createOscillator(),g=audioContext.createGain(); o.frequency.value=f; g.gain.setValueAtTime(0.1,t+i*0.05); g.gain.exponentialRampToValueAtTime(0.01,t+i*0.05+0.3); o.connect(g); g.connect(audioContext.destination); o.start(t+i*0.05); o.stop(t+i*0.05+0.3); }); },
+        correct: (t) => { [523.25,659.25,783.99].forEach((f,i)=>{ const o=audioContext.createOscillator(),g=audioContext.createGain(); o.frequency.value=f; o.type='sine'; g.gain.setValueAtTime(0.1,t+i*0.1); g.gain.linearRampToValueAtTime(0,t+i*0.1+0.4); o.connect(g); g.connect(audioContext.destination); o.start(t+i*0.1); o.stop(t+i*0.1+0.4); }); },
+        wrong: (t) => { const o=audioContext.createOscillator(),g=audioContext.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(150,t); o.frequency.linearRampToValueAtTime(100,t+0.3); g.gain.setValueAtTime(0.1,t); g.gain.linearRampToValueAtTime(0,t+0.3); o.connect(g); g.connect(audioContext.destination); o.start(t); o.stop(t+0.3); }
     };
     function playSound(type) { if(audioContext) soundTypes[type](audioContext.currentTime); }
 
-    const GRID_SIZE = 8;
-    const TOTAL_CELLS = 64;
-    const SHAPES = [
-        [[0,0],[0,1],[1,0],[1,1]], [[0,0],[1,0],[2,0],[3,0],[4,0]], [[0,0],[0,1],[0,2],[0,3],[0,4]],
-        [[0,0],[1,0],[2,0]], [[0,0],[0,1],[0,2]], [[0,0],[1,0],[2,0],[2,1],[2,2]],
-        [[0,0],[0,1],[0,2],[1,2],[2,2]], [[0,0],[1,1],[2,2],[3,3]], [[0,2],[1,2],[2,0],[2,1],[2,2]],
-        [[0,1],[1,0],[1,1],[1,2],[2,1]], [[0,0],[0,1],[1,1],[1,2],[2,2]], [[0,0],[1,0],[1,1]],
-        [[0,0],[0,1],[1,0]], [[0,0],[0,1],[0,2],[0,3]], [[0,0],[1,0],[2,0],[3,0]], [[0,0]]
-    ];
-    
+    // --- 변수 ---
+    const GRID_SIZE = 8; const TOTAL_CELLS = 64;
+    const SHAPES = [ [[0,0],[0,1],[1,0],[1,1]], [[0,0],[1,0],[2,0],[3,0],[4,0]], [[0,0],[0,1],[0,2],[0,3],[0,4]], [[0,0],[1,0],[2,0]], [[0,0],[0,1],[0,2]], [[0,0],[1,0],[2,0],[2,1],[2,2]], [[0,0],[0,1],[0,2],[1,2],[2,2]], [[0,0],[1,1],[2,2],[3,3]], [[0,2],[1,2],[2,0],[2,1],[2,2]], [[0,1],[1,0],[1,1],[1,2],[2,1]], [[0,0],[0,1],[1,1],[1,2],[2,2]], [[0,0],[1,0],[1,1]], [[0,0],[0,1],[1,0]], [[0,0],[0,1],[0,2],[0,3]], [[0,0],[1,0],[2,0],[3,0]], [[0,0]] ];
     let score = 0, highScore = localStorage.getItem('puzzleBest8x8') || 0;
     let grid = Array(TOTAL_CELLS).fill(0), trayShapes = [];
     let vocabulary = JSON.parse(localStorage.getItem('myVocab')) || [{q:"암기 퍼즐 시작!", a:"O", wrongCount: 0}];
     let fileMode = 'import';
-
-    // --- v5.8: 퀴즈 덱 시스템 ---
     let quizDeck = [];
+    let isDragging = false, dragShapeIndex = null, ghostIndices = [];
+    const TOUCH_OFFSET = 60; let anchorRow = 0, anchorCol = 0;
 
-    let isDragging = false;
-    let dragShapeIndex = null;
-    let ghostIndices = []; 
-    const TOUCH_OFFSET = 60; 
-    let anchorRow = 0; 
-    let anchorCol = 0; 
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + id).classList.add('active'); window.scrollTo(0, 0); updateScores(); if(id === 'manage') renderWordList(); }
+    function updateScores() { document.getElementById('high-score-home').innerText = highScore; document.getElementById('high-score-game').innerText = highScore; document.getElementById('score').innerText = score; }
 
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById('screen-' + id).classList.add('active');
-        window.scrollTo(0, 0); updateScores();
-        if(id === 'manage') renderWordList();
-    }
-    function updateScores() {
-        document.getElementById('high-score-home').innerText = highScore;
-        document.getElementById('high-score-game').innerText = highScore;
-        document.getElementById('score').innerText = score;
-    }
-
-    // --- v5.8: 퀴즈 로직 (골고루 출제) ---
-    function shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    }
-
-    function fillQuizDeck() {
-        // 덱이 비었으면 모든 인덱스를 다시 채우고 섞음 (오답노트와 무관하게 전체 순환)
-        quizDeck = [];
-        for (let i = 0; i < vocabulary.length; i++) {
-            quizDeck.push(i);
-        }
-        shuffleArray(quizDeck);
-        // showToast("문제 덱을 리필했습니다!", 'info'); // 디버깅용
-    }
-
+    // --- 퀴즈 로직 (하이브리드) ---
+    function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+    function fillQuizDeck() { quizDeck = []; for (let i = 0; i < vocabulary.length; i++) quizDeck.push(i); shuffleArray(quizDeck); }
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
-        
         curQuiz = 0; quizCorrect = 0;
-        
-        // 1. 오답 우선 선택 (학습용)
-        let wrongIndices = vocabulary
-            .map((v, i) => ({...v, idx: i}))
-            .filter(v => v.wrongCount > 0)
-            .map(v => v.idx);
-            
         let finalIndices = [];
-        
-        // 오답 중 하나를 랜덤으로 뽑음 (있다면)
-        if (wrongIndices.length > 0) {
-            const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
-            finalIndices.push(randomWrong);
-        }
-
-        // 2. 나머지 채우기 (순환 덱 시스템)
+        let wrongCandidates = vocabulary.map((v, i) => ({...v, idx: i})).filter(v => v.wrongCount > 0).map(v => v.idx);
+        if (wrongCandidates.length > 0) finalIndices.push(wrongCandidates[Math.floor(Math.random() * wrongCandidates.length)]);
         while (finalIndices.length < 3) {
-            if (quizDeck.length === 0) fillQuizDeck(); // 덱 다 쓰면 리필
-            
+            if (quizDeck.length === 0) fillQuizDeck();
             const nextIdx = quizDeck.pop();
-            
-            // 데이터 삭제 등으로 인덱스가 유효하지 않으면 패스
-            if (!vocabulary[nextIdx]) continue; 
-
-            // 이미 뽑은(오답으로 뽑힌) 문제면 패스 (중복 방지)
-            if (!finalIndices.includes(nextIdx)) {
-                finalIndices.push(nextIdx);
-            }
+            if (vocabulary[nextIdx] && !finalIndices.includes(nextIdx)) finalIndices.push(nextIdx);
         }
-
-        // 3. 실제 문제 객체로 변환 및 섞기 (보기에 정답이 1번에만 나오지 않게)
+        shuffleArray(finalIndices);
         sessionQuizzes = finalIndices.map(idx => vocabulary[idx]);
-        
-        // 보기 순서 섞기? 아니면 문제 순서 섞기? -> 여기선 문제 출제 순서를 섞음
-        // (필요 시 sessionQuizzes를 shuffleArray 돌려도 됨)
-
         document.getElementById('quiz-modal').style.display = 'flex';
         showQuestion();
     }
-
-    function showQuestion() {
-        const q = sessionQuizzes[curQuiz];
-        document.getElementById('q-title').innerText = `검토 (${curQuiz + 1}/3)`;
-        document.getElementById('q-text').innerText = q.q;
-        document.getElementById('q-input').value = "";
-        document.getElementById('q-feedback').innerText = "";
-        document.getElementById('q-submit').style.display = "block";
-        document.getElementById('q-next').style.display = "none";
-    }
+    function showQuestion() { const q = sessionQuizzes[curQuiz]; document.getElementById('q-title').innerText = `검토 (${curQuiz + 1}/3)`; document.getElementById('q-text').innerText = q.q; document.getElementById('q-input').value = ""; document.getElementById('q-feedback').innerText = ""; document.getElementById('q-submit').style.display = "block"; document.getElementById('q-next').style.display = "none"; }
     function checkQuizAnswer() {
-        const rawInput = document.getElementById('q-input').value.trim();
-        const inputNoSpace = rawInput.replace(/\s/g, "").toUpperCase(); 
-        const originalAns = sessionQuizzes[curQuiz].a;
-        const actualAnsNoSpace = originalAns.replace(/\s/g, "").toUpperCase(); 
-        const feedbackEl = document.getElementById('q-feedback');
-        let isCorrect = false;
-        
-        if (inputNoSpace === "O" || inputNoSpace === "X") {
-            if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
-        } 
-        if (!isCorrect && inputNoSpace === actualAnsNoSpace) isCorrect = true;
+        const raw = document.getElementById('q-input').value.trim(), input = raw.replace(/\s/g, "").toUpperCase();
+        const ans = sessionQuizzes[curQuiz].a, realAns = ans.replace(/\s/g, "").toUpperCase();
+        const fb = document.getElementById('q-feedback');
+        let correct = (input === "O" || input === "X") ? (realAns.charAt(0) === input) : (input === realAns);
+        if (correct) { quizCorrect++; playSound('correct'); if(sessionQuizzes[curQuiz].wrongCount > 0) sessionQuizzes[curQuiz].wrongCount--; fb.innerHTML = `<span style='color:var(--s)'>정답! ✨<br>정답: ${ans}</span>`; }
+        else { playSound('wrong'); sessionQuizzes[curQuiz].wrongCount = (sessionQuizzes[curQuiz].wrongCount || 0) + 1; fb.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${ans}</span>`; }
+        localStorage.setItem('myVocab', JSON.stringify(vocabulary));
+        document.getElementById('q-submit').style.display = "none"; document.getElementById('q-next').style.display = "block";
+    }
+    function nextQuestion() { curQuiz++; if (curQuiz < 3) showQuestion(); else { document.getElementById('quiz-modal').style.display = 'none'; if (quizCorrect >= 2) refillTray(quizCorrect); else { showToast("불합격! 다시 도전하세요.", 'error'); setTimeout(startQuiz, 1000); } } }
+    function refillTray(correctCount) { trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]); if(correctCount === 3) { const b=[[0,0]]; b.isBonus=true; trayShapes.push(b); } renderTray(); checkGameOver(); }
 
-        if (isCorrect) {
-            quizCorrect++; playSound('correct');
-            if(sessionQuizzes[curQuiz].wrongCount > 0) sessionQuizzes[curQuiz].wrongCount--;
-            feedbackEl.innerHTML = `<span style='color:var(--s)'>정답! ✨<br>정답: ${originalAns}</span>`;
-        } else {
-            playSound('wrong');
-            sessionQuizzes[curQuiz].wrongCount = (sessionQuizzes[curQuiz].wrongCount || 0) + 1;
-            feedbackEl.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${originalAns}</span>`;
-        }
-        localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
-        document.getElementById('q-submit').style.display = "none";
-        document.getElementById('q-next').style.display = "block";
-    }
-    function nextQuestion() {
-        curQuiz++;
-        if (curQuiz < 3) showQuestion();
-        else {
-            document.getElementById('quiz-modal').style.display = 'none';
-            if (quizCorrect >= 2) refillTray(quizCorrect);
-            else { 
-                showToast("불합격! 2문제 이상 맞춰야 합니다.", 'error'); 
-                setTimeout(startQuiz, 1000); 
-            }
-        }
-    }
-    function refillTray(correctCount) {
-        trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);
-        if(correctCount === 3) {
-            const bonus = [[0,0]]; bonus.isBonus = true;
-            trayShapes.push(bonus);
-        }
-        renderTray();
-        checkGameOver();
-    }
-
+    // --- 드래그 시스템 (v5.5 좌표유지) ---
     function renderTray() {
-        const trayEl = document.getElementById('tray');
-        trayEl.innerHTML = "";
+        const trayEl = document.getElementById('tray'); trayEl.innerHTML = "";
         trayShapes.forEach((s, i) => {
             if(s === null) return;
-            const div = document.createElement('div');
-            div.className = 'shape-preview';
-            
-            div.addEventListener('touchstart', (e) => handleTouchStart(e, i), {passive: false});
-            div.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false});
-            div.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: false});
-            div.addEventListener('mousedown', (e) => handleTouchStart(e, i));
-
-            for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
-                const cell = document.createElement('div');
-                const isPart = s.some(p=>p[0]===r&&p[1]===c);
-                cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
-                div.appendChild(cell);
-            }
+            const div = document.createElement('div'); div.className = 'shape-preview';
+            div.addEventListener('touchstart', (e) => handleTouchStart(e, i), {passive: false}); div.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false}); div.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: false}); div.addEventListener('mousedown', (e) => handleTouchStart(e, i));
+            for(let r=0; r<5; r++) for(let c=0; c<5; c++) { const cell = document.createElement('div'); const isPart = s.some(p=>p[0]===r&&p[1]===c); cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell'; div.appendChild(cell); }
             trayEl.appendChild(div);
         });
     }
-
     function handleTouchStart(e, idx) {
-        if(e.cancelable) e.preventDefault();
-        isDragging = true;
-        dragShapeIndex = idx;
-        const s = trayShapes[idx];
-
-        const helper = document.getElementById('drag-helper');
-        helper.innerHTML = "";
-        
-        const cellRect = document.querySelector('.cell').getBoundingClientRect();
-        const cellSize = cellRect.width;
-
-        let minR=5, maxR=-1, minC=5, maxC=-1;
-        s.forEach(p => {
-            minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
-            minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
-        });
-        
-        anchorR = maxR;
-        anchorC = Math.round((minC + maxC) / 2);
-
-        const rows = maxR - minR + 1;
-        const cols = maxC - minC + 1;
-
-        helper.style.display = "grid"; 
-        helper.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
-        helper.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
-        helper.style.gap = "1px";
-        helper.style.width = (cols * cellSize + (cols-1)) + 'px';
-        helper.style.height = (rows * cellSize + (rows-1)) + 'px';
-
-        for(let r=minR; r<=maxR; r++) {
-            for(let c=minC; c<=maxC; c++) {
-                const cell = document.createElement('div');
-                const isPart = s.some(p=>p[0]===r&&p[1]===c);
-                cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
-                if (!isPart) cell.style.visibility = "hidden";
-                helper.appendChild(cell);
-            }
-        }
-        
-        moveHelper(e);
-        e.currentTarget.classList.add('dragging');
-        playSound('click');
-        ghostIndices = []; 
+        if(e.cancelable) e.preventDefault(); isDragging = true; dragShapeIndex = idx; const s = trayShapes[idx];
+        const helper = document.getElementById('drag-helper'); helper.innerHTML = "";
+        const cellSize = document.querySelector('.cell').getBoundingClientRect().width;
+        let minR=5, maxR=-1, minC=5, maxC=-1; s.forEach(p => { minR=Math.min(minR,p[0]); maxR=Math.max(maxR,p[0]); minC=Math.min(minC,p[1]); maxC=Math.max(maxC,p[1]); });
+        anchorR = maxR; anchorC = Math.round((minC + maxC) / 2);
+        const rows = maxR - minR + 1; const cols = maxC - minC + 1;
+        helper.style.display = "grid"; helper.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`; helper.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`; helper.style.gap = "1px"; helper.style.width = (cols * cellSize + (cols-1)) + 'px'; helper.style.height = (rows * cellSize + (rows-1)) + 'px';
+        for(let r=minR; r<=maxR; r++) for(let c=minC; c<=maxC; c++) { const cell = document.createElement('div'); const isPart = s.some(p=>p[0]===r&&p[1]===c); cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell'; if (!isPart) cell.style.visibility = "hidden"; helper.appendChild(cell); }
+        moveHelper(e); e.currentTarget.classList.add('dragging'); playSound('click'); ghostIndices = [];
     }
-
-    function handleTouchMove(e) {
-        if(!isDragging) return;
-        if(e.cancelable) e.preventDefault();
-        moveHelper(e);
-        updateGhost(e);
-    }
-
-    function handleTouchEnd(e) {
-        if(!isDragging) return;
-        isDragging = false;
-        document.getElementById('drag-helper').style.display = "none"; 
-        document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging'));
-
-        if(ghostIndices.length > 0) {
-            placeBlock(ghostIndices, trayShapes[dragShapeIndex]);
-        } else {
-            clearGhost();
-        }
-        ghostIndices = [];
-        dragShapeIndex = null;
-    }
-
+    function handleTouchMove(e) { if(!isDragging) return; if(e.cancelable) e.preventDefault(); moveHelper(e); updateGhost(e); }
+    function handleTouchEnd(e) { if(!isDragging) return; isDragging = false; document.getElementById('drag-helper').style.display = "none"; document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging')); if(ghostIndices.length > 0) placeBlock(ghostIndices, trayShapes[dragShapeIndex]); else clearGhost(); ghostIndices = []; dragShapeIndex = null; }
     function moveHelper(e) {
-        const helper = document.getElementById('drag-helper');
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        const cellRect = document.querySelector('.cell').getBoundingClientRect();
-        const cellSize = cellRect.width;
-        const s = trayShapes[dragShapeIndex];
-        
-        let minR=5, maxR=-1, minC=5, maxC=-1;
-        s.forEach(p => {
-            minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
-            minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
-        });
-
-        const relAnchorR = anchorR - minR;
-        const relAnchorC = anchorC - minC;
-        
-        const targetX = cx;
-        const targetY = cy - TOUCH_OFFSET;
-        
-        const helperLeft = targetX - (relAnchorC * cellSize + cellSize / 2);
-        const helperTop = targetY - (relAnchorR * cellSize + cellSize / 2);
-
-        helper.style.left = helperLeft + 'px';
-        helper.style.top = helperTop + 'px'; 
+        const h = document.getElementById('drag-helper'); const cx = e.touches ? e.touches[0].clientX : e.clientX; const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        const cs = document.querySelector('.cell').getBoundingClientRect().width; const s = trayShapes[dragShapeIndex];
+        let minR=5, minC=5; s.forEach(p => { minR=Math.min(minR,p[0]); minC=Math.min(minC,p[1]); });
+        const relR = anchorR - minR; const relC = anchorC - minC;
+        h.style.left = (cx - (relC * cs + cs / 2)) + 'px'; h.style.top = (cy - TOUCH_OFFSET - (relR * cs + cs / 2)) + 'px';
     }
-
     function updateGhost(e) {
-        clearGhost();
-        ghostIndices = [];
-
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        const cellRect = document.querySelector('.cell').getBoundingClientRect();
-        const cellSize = cellRect.width;
-        
-        const probeY = cy - TOUCH_OFFSET - (cellSize / 2); 
-
-        const helper = document.getElementById('drag-helper');
-        helper.style.display = 'none'; 
-        const el = document.elementFromPoint(cx, probeY);
-        helper.style.display = 'grid';
-
-        if(!el || !el.classList.contains('cell')) return; 
-
-        const targetIdx = parseInt(el.id.split('-')[1]);
-        const tR = Math.floor(targetIdx / 8);
-        const tC = targetIdx % 8;
-        const s = trayShapes[dragShapeIndex];
-
-        const shiftR = tR - anchorR;
-        const shiftC = tC - anchorC;
-        
-        let indices = [];
-        const fit = s.every(p => {
-            const nr = p[0] + shiftR;
-            const nc = p[1] + shiftC;
-            
-            if(nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && grid[nr*8 + nc] === 0) {
-                indices.push(nr*8 + nc);
-                return true;
-            }
-            return false;
-        });
-
-        if(fit) {
-            ghostIndices = indices;
-            indices.forEach(idx => {
-                const cell = document.getElementById('cell-' + idx);
-                cell.classList.add(s.isBonus ? 'ghost-bonus' : 'ghost');
-            });
-        }
+        clearGhost(); ghostIndices = [];
+        const cx = e.touches ? e.touches[0].clientX : e.clientX; const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        const cs = document.querySelector('.cell').getBoundingClientRect().width;
+        const h = document.getElementById('drag-helper'); h.style.display = 'none'; const el = document.elementFromPoint(cx, cy - TOUCH_OFFSET - (cs/2)); h.style.display = 'grid';
+        if(!el || !el.classList.contains('cell')) return;
+        const tid = parseInt(el.id.split('-')[1]); const tr = Math.floor(tid / 8), tc = tid % 8;
+        const s = trayShapes[dragShapeIndex]; const sr = tr - anchorR, sc = tc - anchorC;
+        let inds = []; const fit = s.every(p => { const nr=p[0]+sr, nc=p[1]+sc; if(nr>=0&&nr<8&&nc>=0&&nc<8&&grid[nr*8+nc]===0) { inds.push(nr*8+nc); return true; } return false; });
+        if(fit) { ghostIndices = inds; inds.forEach(i => document.getElementById('cell-'+i).classList.add(s.isBonus?'ghost-bonus':'ghost')); }
     }
+    function clearGhost() { document.querySelectorAll('.cell').forEach(c => { c.classList.remove('ghost'); c.classList.remove('ghost-bonus'); }); }
+    function placeBlock(inds, s) { playSound('place'); inds.forEach(i => { grid[i] = 1; document.getElementById('cell-'+i).className = s.isBonus ? 'cell bonus-filled' : 'cell filled'; }); trayShapes[dragShapeIndex] = null; renderTray(); checkLines(); if(trayShapes.every(v => v === null)) startQuiz(); else checkGameOver(); }
 
-    function clearGhost() {
-        document.querySelectorAll('.cell').forEach(c => {
-            c.classList.remove('ghost');
-            c.classList.remove('ghost-bonus');
-        });
-    }
-
-    function placeBlock(indices, s) {
-        playSound('place');
-        indices.forEach(idx => {
-            grid[idx] = 1;
-            const cell = document.getElementById('cell-' + idx);
-            cell.className = s.isBonus ? 'cell bonus-filled' : 'cell filled';
-        });
-        
-        trayShapes[dragShapeIndex] = null;
-        renderTray();
-        checkLines();
-
-        if(trayShapes.every(v => v === null)) startQuiz();
-        else checkGameOver();
-    }
-
-    function triggerShake() {
-        const g = document.getElementById('grid');
-        g.classList.remove('shaking'); void g.offsetWidth; g.classList.add('shaking');
-    }
-    function showFloatingScore(txt) {
-        const el = document.createElement('div'); el.className = 'float-score'; el.innerText = `+${txt}`;
-        const rect = document.getElementById('grid').getBoundingClientRect();
-        el.style.left = (rect.width / 2 - 20) + "px"; el.style.top = (rect.height / 2 - 20) + "px";
-        document.getElementById('grid-container').appendChild(el); setTimeout(() => el.remove(), 1000);
-    }
     function checkLines() {
         let rs=[], cs=[];
-        for(let i=0; i<8; i++) {
-            if(grid.slice(i*8, i*8+8).every(v=>v===1)) rs.push(i);
-            let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
-            if(col.every(v=>v===1)) cs.push(i);
-        }
-        const count = rs.length + cs.length;
-        if(count > 0) {
-            playSound('clear'); triggerShake();
-            let gained = count * 10 * count; score += gained;
-            showFloatingScore(gained);
-            if(score > highScore) { highScore=score; localStorage.setItem('puzzleBest8x8', highScore); }
-            updateScores();
-        }
-        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
-        cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
+        for(let i=0; i<8; i++) { if(grid.slice(i*8, i*8+8).every(v=>v===1)) rs.push(i); let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]); if(col.every(v=>v===1)) cs.push(i); }
+        if(rs.length+cs.length>0) { playSound('clear'); document.getElementById('grid').classList.remove('shaking'); void document.getElementById('grid').offsetWidth; document.getElementById('grid').classList.add('shaking'); const gain=(rs.length+cs.length)*10*(rs.length+cs.length); score+=gain; updateScores(); const el=document.createElement('div'); el.className='float-score'; el.innerText=`+${gain}`; document.getElementById('grid-container').appendChild(el); setTimeout(()=>el.remove(),1000); if(score>highScore) { highScore=score; localStorage.setItem('puzzleBest8x8',highScore); } }
+        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); }); cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
     }
-    function animateClear(i) { 
-        grid[i]=0; const el=document.getElementById('cell-'+i); 
-        el.classList.add('clearing'); setTimeout(()=>{ el.className = 'cell'; }, 300); 
-    }
+    function animateClear(i) { grid[i]=0; const el=document.getElementById('cell-'+i); el.classList.add('clearing'); setTimeout(()=>{ el.className='cell'; }, 300); }
     function checkGameOver() {
-        const canPlaceAny = trayShapes.some(s => {
-            if(!s) return false;
-            for(let i=0; i<64; i++) {
-                const r=Math.floor(i/8), c=i%8;
-                const fit = s.every(p => {
-                    const nr=r+p[0], nc=c+p[1];
-                    return nr<8 && nc<8 && grid[nr*8+nc] === 0;
-                });
-                if(fit) return true;
-            }
-            return false;
-        });
-        if(!canPlaceAny && !trayShapes.every(v => v === null)) {
-            showToast(`게임 종료! 최종 점수: ${score}`, 'info');
-            setTimeout(() => showScreen('home'), 2000);
-        }
-    }
-    function startGame() { 
-        initAudio(); 
-        if(vocabulary.length < 1) return showToast("문제를 등록해주세요!", 'error'); 
-        showScreen('game'); initGame(); 
-    }
-    function initGame() {
-        score = 0; grid.fill(0); updateScores();
-        const gridEl = document.getElementById('grid'); gridEl.innerHTML = "";
-        for (let i = 0; i < TOTAL_CELLS; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell'; cell.id = 'cell-' + i;
-            gridEl.appendChild(cell);
-        }
-        refillTray(0);
-        
-        // 게임 시작 시 덱 초기화 (새로운 마음으로)
-        fillQuizDeck();
+        const can = trayShapes.some(s => { if(!s) return false; for(let i=0; i<64; i++) { const r=Math.floor(i/8), c=i%8; if(s.every(p=>{const nr=r+p[0],nc=c+p[1]; return nr<8&&nc<8&&grid[nr*8+nc]===0})) return true; } return false; });
+        if(!can && !trayShapes.every(v=>v===null)) { showToast(`게임 종료! 점수: ${score}`, 'info'); setTimeout(()=>showScreen('home'), 2000); }
     }
     
-    function isDuplicate(q, a) {
-        const nQ = q.replace(/\s/g, "").toUpperCase(); const nA = a.replace(/\s/g, "").toUpperCase();
-        return vocabulary.some(item => item.q.replace(/\s/g, "").toUpperCase() === nQ && item.a.replace(/\s/g, "").toUpperCase() === nA);
-    }
-    function addWord() {
-        const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
-        if(q&&a) { 
-            if(isDuplicate(q, a)) return showToast("중복된 문제입니다!", 'error');
-            vocabulary.push({q, a, wrongCount: 0}); localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
-            renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value="";
-            showToast("추가되었습니다!", 'success');
-            // 단어가 추가되면 덱을 리셋해주는 게 안전함
-            fillQuizDeck();
-        } else {
-            showToast("문제와 정답을 모두 입력하세요.", 'error');
-        }
-    }
-    function toggleExcel() {
-        const el = document.getElementById('excel-area');
-        el.style.display = el.style.display === 'none' ? 'block' : 'none';
-    }
-    function parseExcel() {
-        const raw = document.getElementById('excel-input').value;
-        if(!raw.trim()) return showToast("내용을 입력해주세요.", 'error');
-        
-        const rows = raw.split('\n');
-        let added = 0;
-        
-        rows.forEach(row => {
-            const cols = row.split('\t');
-            if(cols.length >= 2) {
-                const q = cols[0].trim();
-                const a = cols[1].trim();
-                if(q && a && !isDuplicate(q, a)) {
-                    vocabulary.push({q, a, wrongCount: 0});
-                    added++;
-                }
-            }
-        });
-        
-        localStorage.setItem('myVocab', JSON.stringify(vocabulary));
-        renderWordList();
-        document.getElementById('excel-input').value = "";
-        showToast(`${added}개의 단어가 추가되었습니다!`, 'success');
-        toggleExcel();
-        fillQuizDeck(); // 대량 추가 후 덱 리셋
-    }
-
-    function renderWordList() {
-        document.getElementById('word-list').innerHTML = vocabulary.map((v, i) => `
-            <div class="word-card"><b>${v.q}</b><br><small>정답: ${v.a}</small>
-            ${v.wrongCount > 0 ? `<span style="color:var(--danger); font-size:0.7rem; font-weight:bold;"><br>🔥 복습 필요 (${v.wrongCount})</span>` : ''}
-            <button onclick="deleteWord(${i})" style="position:absolute;right:10px;top:10px;border:none;background:none;font-size:1.2rem;color:#ccc;">✕</button></div>
-        `).reverse().join(''); 
-    }
-    function deleteWord(i) { 
-        if(confirm("삭제할까요?")) { 
-            vocabulary.splice(i,1); 
-            localStorage.setItem('myVocab',JSON.stringify(vocabulary)); 
-            renderWordList(); 
-            fillQuizDeck(); // 삭제 시 인덱스 꼬임 방지를 위해 리셋
-        } 
-    }
-    function triggerFile(mode) { fileMode = mode; document.getElementById('file-input').click(); }
-    function handleFile(e) {
-        const file = e.target.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const newData = JSON.parse(evt.target.result);
-                if (fileMode === 'append') {
-                    let dup = 0; let add = 0;
-                    newData.forEach(item => { if(isDuplicate(item.q, item.a)) dup++; else { vocabulary.push({...item, wrongCount:item.wrongCount||0}); add++; } });
-                    showToast(`중복 ${dup}개 제외, ${add}개 추가!`, 'info');
-                } else { vocabulary = newData.map(v => ({...v, wrongCount: v.wrongCount || 0})); showToast("목록 교체 완료!", 'success'); }
-                localStorage.setItem('myVocab', JSON.stringify(vocabulary)); renderWordList();
-                fillQuizDeck(); // 파일 로드 후 리셋
-            } catch (err) { showToast("파일 형식이 잘못되었습니다.", 'error'); }
-            e.target.value = '';
-        };
-        reader.readAsText(file);
-    }
-    function exportJSON() {
-        const blob = new Blob([JSON.stringify(vocabulary, null, 2)], {type: "application/json"});
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `quiz_backup.json`; a.click();
-    }
-    function confirmExit() { if(confirm("홈으로 나갈까요?")) showScreen('home'); }
+    // --- 관리 ---
+    function startGame() { initAudio(); if(vocabulary.length<1) return showToast("문제를 등록해주세요!", 'error'); showScreen('game'); initGame(); }
+    function initGame() { score=0; grid.fill(0); updateScores(); const g=document.getElementById('grid'); g.innerHTML=""; for(let i=0;i<64;i++){const c=document.createElement('div');c.className='cell';c.id='cell-'+i;g.appendChild(c);} refillTray(0); fillQuizDeck(); }
+    function isDuplicate(q, a) { const nQ=q.replace(/\s/g,"").toUpperCase(), nA=a.replace(/\s/g,"").toUpperCase(); return vocabulary.some(v=>v.q.replace(/\s/g,"").toUpperCase()===nQ && v.a.replace(/\s/g,"").toUpperCase()===nA); }
+    function addWord() { const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim(); if(q&&a) { if(isDuplicate(q,a)) return showToast("중복입니다!",'error'); vocabulary.push({q,a,wrongCount:0}); localStorage.setItem('myVocab',JSON.stringify(vocabulary)); renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; showToast("추가됨!",'success'); fillQuizDeck(); } else showToast("내용을 입력하세요",'error'); }
+    function toggleExcel() { const el=document.getElementById('excel-area'); el.style.display=el.style.display==='none'?'block':'none'; }
+    function parseExcel() { const raw=document.getElementById('excel-input').value; if(!raw.trim()) return showToast("입력하세요",'error'); const rows=raw.split('\n'); let add=0; rows.forEach(r=>{ const c=r.split('\t'); if(c.length>=2){ const q=c[0].trim(),a=c[1].trim(); if(q&&a&&!isDuplicate(q,a)){ vocabulary.push({q,a,wrongCount:0}); add++; } } }); localStorage.setItem('myVocab',JSON.stringify(vocabulary)); renderWordList(); document.getElementById('excel-input').value=""; showToast(`${add}개 추가됨`,'success'); toggleExcel(); fillQuizDeck(); }
+    function renderWordList() { document.getElementById('word-list').innerHTML = vocabulary.map((v,i)=>`<div class="word-card"><b>${v.q}</b><br><small>${v.a}</small>${v.wrongCount>0?`<span style="color:var(--danger);font-size:0.7rem;"><br>🔥복습(${v.wrongCount})</span>`:''}<button onclick="deleteWord(${i})" style="position:absolute;right:10px;top:10px;border:none;background:none;font-size:1.2rem;color:#ccc;">✕</button></div>`).reverse().join(''); }
+    function deleteWord(i) { if(confirm("삭제?")) { vocabulary.splice(i,1); localStorage.setItem('myVocab',JSON.stringify(vocabulary)); renderWordList(); fillQuizDeck(); } }
+    function triggerFile(m) { fileMode=m; document.getElementById('file-input').click(); }
+    function handleFile(e) { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=(evt)=>{ try { const d=JSON.parse(evt.target.result); if(fileMode==='append'){ let a=0; d.forEach(i=>{ if(!isDuplicate(i.q,i.a)){ vocabulary.push({...i,wrongCount:i.wrongCount||0}); a++; } }); showToast(`${a}개 추가`,'info'); } else { vocabulary=d.map(v=>({...v,wrongCount:v.wrongCount||0})); showToast("교체 완료",'success'); } localStorage.setItem('myVocab',JSON.stringify(vocabulary)); renderWordList(); fillQuizDeck(); } catch(e){ showToast("파일 오류",'error'); } e.target.value=''; }; r.readAsText(f); }
+    function exportJSON() { const b=new Blob([JSON.stringify(vocabulary,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`quiz_backup.json`; a.click(); }
+    function confirmExit() { if(confirm("나갈까요?")) showScreen('home'); }
     window.onload = updateScores;
     window.addEventListener('mousemove', (e) => { if(isDragging) { moveHelper(e); updateGhost(e); } });
     window.addEventListener('mouseup', (e) => { if(isDragging) handleTouchEnd(e); });
