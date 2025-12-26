@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.0</title>
+    <title>암기 퍼즐 PRO v3.1</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -186,9 +186,7 @@
         document.getElementById('q-next').style.display = "none";
     }
 
-    // --- 정답 체크 로직 (띄어쓰기 무시 기능 추가) ---
     function checkQuizAnswer() {
-        // 입력값과 정답 모두 공백 제거 및 대문자 변환
         const input = document.getElementById('q-input').value.replace(/\s/g, "").toUpperCase();
         const actualAns = sessionQuizzes[curQuiz].a.replace(/\s/g, "").toUpperCase();
         const originalAns = sessionQuizzes[curQuiz].a;
@@ -332,15 +330,30 @@
     }
     function selectShape(i) { if(trayShapes[i]) { selectedShapeIndex = i; renderTray(); } }
     
+    // --- 문제 관리 및 중복 체크 로직 ---
+    function isDuplicate(q, a) {
+        const newQ = q.replace(/\s/g, "").toUpperCase();
+        const newA = a.replace(/\s/g, "").toUpperCase();
+        return vocabulary.some(item => 
+            item.q.replace(/\s/g, "").toUpperCase() === newQ && 
+            item.a.replace(/\s/g, "").toUpperCase() === newA
+        );
+    }
+
     function addWord() {
         const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
         if(q&&a) { 
+            if(isDuplicate(q, a)) {
+                alert("이미 목록에 있는 중복된 문제입니다!");
+                return;
+            }
             vocabulary.push({q,a}); 
             localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
             renderWordList(); 
             document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; 
         }
     }
+
     function renderWordList() {
         document.getElementById('word-list').innerHTML = vocabulary.map((v, i) => `
             <div class="word-card"><b>${v.q}</b><br><small>정답: ${v.a}</small>
@@ -357,8 +370,18 @@
             try {
                 const newData = JSON.parse(evt.target.result);
                 if (fileMode === 'append') {
-                    vocabulary = [...vocabulary, ...newData];
-                    alert("기존 목록에 문제를 추가했습니다!");
+                    let dupCount = 0;
+                    let addedCount = 0;
+                    const filteredData = newData.filter(item => {
+                        if(isDuplicate(item.q, item.a)) {
+                            dupCount++;
+                            return false;
+                        }
+                        addedCount++;
+                        return true;
+                    });
+                    vocabulary = [...vocabulary, ...filteredData];
+                    alert(`중복 문제 ${dupCount}개를 제외한 ${addedCount}개의 문제가 추가되었습니다!`);
                 } else {
                     vocabulary = newData;
                     alert("목록을 새로 교체했습니다!");
