@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v4.8</title>
+    <title>암기 퍼즐 PRO v4.9</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -70,8 +70,8 @@
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
-        /* 고스트 블록 스타일 */
-        .cell.ghost { background: var(--p); opacity: 0.6; transform: scale(0.95); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.8); }
+        /* 고스트 블록 스타일 (v4.9: 시인성 강화) */
+        .cell.ghost { background: var(--p); opacity: 0.6; transform: scale(0.95); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.7); }
         .cell.ghost-bonus { background: var(--bonus); opacity: 0.6; transform: scale(0.95); }
 
         #tray { 
@@ -81,6 +81,7 @@
             touch-action: none; 
         }
         .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; transition: opacity 0.2s, visibility 0.2s; }
+        /* 드래그 중인 원본은 숨김 */
         .shape-preview.dragging { opacity: 0; visibility: hidden; } 
         .preview-cell { aspect-ratio: 1/1; }
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
@@ -90,13 +91,14 @@
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
             display: none; 
-            opacity: 0.85; /* 잘 보이게 */
-            transform: translate(-50%, -50%); /* 중심점 기준 */
+            opacity: 0.9; 
+            /* v4.9 핵심: -50%, -100% -> 가로 중앙 정렬 & 블록 바닥이 기준점이 됨 (손가락 위에 얹힘) */
+            transform: translate(-50%, -100%); 
         }
         #drag-helper .preview-cell { background: transparent; } 
         #drag-helper .preview-cell.filled, 
         #drag-helper .preview-cell.bonus { 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-radius: 4px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.25); border-radius: 4px;
         }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
@@ -151,7 +153,7 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요 (손가락 위에 표시됨)</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -183,7 +185,7 @@
     </div>
 
 <script>
-    // --- 오디오 시스템 (v3.8) ---
+    // --- 오디오 시스템 (유지) ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioContext = null;
 
@@ -251,8 +253,8 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    // v4.8 수정: 60px 간격 (살짝 띄워서 가리지 않게)
-    const TOUCH_OFFSET = 60; 
+    // v4.9 수정: 손가락 위로 80px 띄움 (시야 확보)
+    const DRAG_OFFSET = 80; 
 
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -342,7 +344,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v4.8 (중앙 정렬 보정 & 60px 간격) ---
+    // --- 드래그 앤 드롭 시스템 v4.9 (정밀 조준) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -378,6 +380,7 @@
         const cellRect = document.querySelector('.cell').getBoundingClientRect();
         const cellSize = cellRect.width;
 
+        // v4.9: 정확한 Bounding Box 계산
         let minR=5, maxR=-1, minC=5, maxC=-1;
         s.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
@@ -393,11 +396,14 @@
         helper.style.width = (cols * cellSize + (cols-1)) + 'px';
         helper.style.height = (rows * cellSize + (rows-1)) + 'px';
 
+        // 빈 칸 없이 꽉 채워서 Helper 생성 (왼쪽 정렬 문제 해결)
         for(let r=minR; r<=maxR; r++) {
             for(let c=minC; c<=maxC; c++) {
                 const cell = document.createElement('div');
                 const isPart = s.some(p=>p[0]===r&&p[1]===c);
                 cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
+                // 투명 칸은 아예 추가하지 않거나 스타일로 숨김
+                if (!isPart) cell.style.visibility = "hidden";
                 helper.appendChild(cell);
             }
         }
@@ -433,16 +439,19 @@
         const helper = document.getElementById('drag-helper');
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        // v4.9: Helper의 바닥이 DRAG_OFFSET 만큼 위에 위치
         helper.style.left = cx + 'px';
-        helper.style.top = (cy - TOUCH_OFFSET) + 'px'; 
+        helper.style.top = (cy - DRAG_OFFSET) + 'px'; 
     }
 
     function updateGhost(e) {
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // 탐지 지점도 60px 위로 일치
-        const targetY = cy - TOUCH_OFFSET; 
+        // 탐지 지점: Helper의 시각적 중심 (손가락보다 위)
+        // 헬퍼 높이의 절반 정도를 더 위로 잡아야 자연스러움
+        // 하지만 직관성을 위해 '손가락 위 DRAG_OFFSET' 지점을 기준으로 함
+        const targetY = cy - DRAG_OFFSET; 
 
         const helper = document.getElementById('drag-helper');
         helper.style.display = 'none'; 
@@ -458,22 +467,21 @@
         const tC = targetIdx % 8;
         const s = trayShapes[dragShapeIndex];
 
-        // --- v4.8 핵심 수정: 모양 중앙 정렬 알고리즘 ---
-        // 1. 모양의 바운딩 박스 계산
+        // --- v4.9 정밀 보정: 모양의 '시각적 중심'을 타겟 셀에 일치시킴 ---
         let minR=5, maxR=-1, minC=5, maxC=-1;
         s.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
         
-        // 2. 모양 자체의 '중앙'이 (minR, minC)로부터 얼마나 떨어져 있는지(offset) 계산
-        const midR = Math.floor((maxR - minR) / 2);
-        const midC = Math.floor((maxC - minC) / 2);
+        // 블록의 중심점 (소수점 포함)
+        const centerR = (maxR - minR) / 2;
+        const centerC = (maxC - minC) / 2;
         
-        // 3. 타겟 셀(tR, tC)에 '모양의 중앙'을 맞추기 위한 이동량 계산
-        // 목표: (minR + midR, minC + midC) 지점이 (tR, tC)가 되어야 함
-        const shiftR = tR - (minR + midR);
-        const shiftC = tC - (minC + midC);
+        // 이동 거리 계산: (타겟 셀) - (블록 중심)
+        // Math.round를 사용하여 가장 가까운 정수 칸으로 스냅
+        const shiftR = tR - Math.round(minR + centerR);
+        const shiftC = tC - Math.round(minC + centerC);
         
         let indices = [];
         const fit = s.every(p => {
