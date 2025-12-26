@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v5.6</title>
+    <title>암기 퍼즐 PRO v5.7</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -122,13 +122,30 @@
         .btn-outline { flex: 1; min-width: 45%; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
         .btn-append { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
         
-        /* 엑셀 입력창 스타일 */
         #excel-area { display: none; width: 100%; background: #f0fff4; padding: 10px; border-radius: 10px; border: 2px dashed var(--excel); margin-bottom: 15px; }
         #excel-input { width: 100%; height: 100px; font-family: monospace; white-space: pre; padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 0.8rem; margin-bottom: 5px; }
+
+        /* v5.7: 토스트 메시지 스타일 */
+        #toast-container {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; pointer-events: none; width: 100%; display: flex; justify-content: center;
+        }
+        .toast {
+            background: rgba(30, 30, 30, 0.9); color: white; padding: 12px 24px;
+            border-radius: 30px; font-size: 0.95rem; font-weight: bold;
+            opacity: 0; transition: opacity 0.3s, transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            transform: translateY(20px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center; max-width: 85%;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { background: rgba(231, 76, 60, 0.95); } /* 빨간맛 */
+        .toast.success { background: rgba(46, 204, 113, 0.95); } /* 초록맛 */
+        .toast.info { background: rgba(52, 152, 219, 0.95); } /* 파란맛 */
     </style>
 </head>
 <body>
     <div id="drag-helper"></div>
+    <div id="toast-container"></div>
 
     <div id="screen-home" class="screen active">
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
@@ -196,7 +213,26 @@
     </div>
 
 <script>
-    // --- 오디오 시스템 (유지) ---
+    // --- v5.7: 토스트 메시지 시스템 ---
+    function showToast(msg, type='normal') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerText = msg;
+        container.appendChild(el);
+
+        // 애니메이션 트리거
+        void el.offsetWidth; 
+        el.classList.add('show');
+
+        // 자동 삭제
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 300);
+        }, 2000); // 2초간 표시
+    }
+
+    // --- 오디오 시스템 ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioContext = null;
 
@@ -264,7 +300,6 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    // v5.5 유지: 60px 간격
     const TOUCH_OFFSET = 60; 
     let anchorRow = 0; 
     let anchorCol = 0; 
@@ -281,7 +316,7 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 로직 (유지) ---
+    // --- 퀴즈 로직 (v3.9) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
@@ -344,7 +379,10 @@
         else {
             document.getElementById('quiz-modal').style.display = 'none';
             if (quizCorrect >= 2) refillTray(quizCorrect);
-            else { alert("불합격! 2문제 이상 맞춰야 합니다."); startQuiz(); }
+            else { 
+                showToast("불합격! 2문제 이상 맞춰야 합니다.", 'error'); 
+                setTimeout(startQuiz, 1000); 
+            }
         }
     }
     function refillTray(correctCount) {
@@ -357,7 +395,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v5.5 (완벽한 좌표 동기화) ---
+    // --- 드래그 앤 드롭 시스템 (v5.5) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -594,10 +632,15 @@
             return false;
         });
         if(!canPlaceAny && !trayShapes.every(v => v === null)) {
-            alert("게임 종료! 최종 점수: " + score); showScreen('home');
+            showToast(`게임 종료! 최종 점수: ${score}`, 'info');
+            setTimeout(() => showScreen('home'), 2000);
         }
     }
-    function startGame() { initAudio(); if(vocabulary.length < 1) return alert("문제를 등록해주세요."); showScreen('game'); initGame(); }
+    function startGame() { 
+        initAudio(); 
+        if(vocabulary.length < 1) return showToast("문제를 등록해주세요!", 'error'); 
+        showScreen('game'); initGame(); 
+    }
     function initGame() {
         score = 0; grid.fill(0); updateScores();
         const gridEl = document.getElementById('grid'); gridEl.innerHTML = "";
@@ -609,7 +652,7 @@
         refillTray(0);
     }
     
-    // 문제 관리 로직 (기존 유지) + v5.6 엑셀 기능
+    // 문제 관리 로직
     function isDuplicate(q, a) {
         const nQ = q.replace(/\s/g, "").toUpperCase(); const nA = a.replace(/\s/g, "").toUpperCase();
         return vocabulary.some(item => item.q.replace(/\s/g, "").toUpperCase() === nQ && item.a.replace(/\s/g, "").toUpperCase() === nA);
@@ -617,25 +660,28 @@
     function addWord() {
         const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
         if(q&&a) { 
-            if(isDuplicate(q, a)) return alert("중복된 문제입니다!");
+            if(isDuplicate(q, a)) return showToast("중복된 문제입니다!", 'error');
             vocabulary.push({q, a, wrongCount: 0}); localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
-            renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; 
+            renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value="";
+            showToast("추가되었습니다!", 'success');
+        } else {
+            showToast("문제와 정답을 모두 입력하세요.", 'error');
         }
     }
-    // --- v5.6: 엑셀 파싱 로직 ---
+    // 엑셀 기능
     function toggleExcel() {
         const el = document.getElementById('excel-area');
         el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
     function parseExcel() {
         const raw = document.getElementById('excel-input').value;
-        if(!raw.trim()) return alert("내용을 입력해주세요.");
+        if(!raw.trim()) return showToast("내용을 입력해주세요.", 'error');
         
         const rows = raw.split('\n');
         let added = 0;
         
         rows.forEach(row => {
-            const cols = row.split('\t'); // 탭으로 분리
+            const cols = row.split('\t');
             if(cols.length >= 2) {
                 const q = cols[0].trim();
                 const a = cols[1].trim();
@@ -649,7 +695,7 @@
         localStorage.setItem('myVocab', JSON.stringify(vocabulary));
         renderWordList();
         document.getElementById('excel-input').value = "";
-        alert(`${added}개의 단어가 성공적으로 추가되었습니다!`);
+        showToast(`${added}개의 단어가 추가되었습니다!`, 'success');
         toggleExcel();
     }
 
@@ -671,10 +717,10 @@
                 if (fileMode === 'append') {
                     let dup = 0; let add = 0;
                     newData.forEach(item => { if(isDuplicate(item.q, item.a)) dup++; else { vocabulary.push({...item, wrongCount:item.wrongCount||0}); add++; } });
-                    alert(`중복 ${dup}개 제외, ${add}개 추가 완료!`);
-                } else { vocabulary = newData.map(v => ({...v, wrongCount: v.wrongCount || 0})); alert("목록 교체 완료!"); }
+                    showToast(`중복 ${dup}개 제외, ${add}개 추가!`, 'info');
+                } else { vocabulary = newData.map(v => ({...v, wrongCount: v.wrongCount || 0})); showToast("목록 교체 완료!", 'success'); }
                 localStorage.setItem('myVocab', JSON.stringify(vocabulary)); renderWordList();
-            } catch (err) { alert("형식이 잘못되었습니다."); }
+            } catch (err) { showToast("파일 형식이 잘못되었습니다.", 'error'); }
             e.target.value = '';
         };
         reader.readAsText(file);
