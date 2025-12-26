@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v4.6</title>
+    <title>암기 퍼즐 PRO v4.7</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -70,7 +70,7 @@
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
-        /* 고스트 블록 스타일 (v4.6: 더 진하게) */
+        /* 고스트 블록 스타일 (선명하게) */
         .cell.ghost { background: var(--p); opacity: 0.7; transform: scale(0.95); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.8); }
         .cell.ghost-bonus { background: var(--bonus); opacity: 0.7; transform: scale(0.95); }
 
@@ -81,7 +81,6 @@
             touch-action: none; 
         }
         .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; transition: opacity 0.2s, visibility 0.2s; }
-        /* 드래그 중인 원본은 숨김 */
         .shape-preview.dragging { opacity: 0; visibility: hidden; } 
         .preview-cell { aspect-ratio: 1/1; }
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
@@ -90,11 +89,11 @@
         /* 드래그 헬퍼 (따라다니는 블록) */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
-            display: none; /* JS에서 grid로 변경 */
+            display: none; 
             opacity: 0.8; 
-            transform: translate(-50%, -50%); /* 중심점 기준 */
+            transform: translate(-50%, -50%); /* 정확히 중앙 정렬 */
         }
-        #drag-helper .preview-cell { background: transparent; } /* 빈 칸 투명 */
+        #drag-helper .preview-cell { background: transparent; } 
         #drag-helper .preview-cell.filled, 
         #drag-helper .preview-cell.bonus { 
             box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-radius: 4px;
@@ -252,8 +251,8 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    // v4.6 수정: 오프셋을 50px로 축소 (찰싹 달라붙는 느낌)
-    const TOUCH_OFFSET = 50; 
+    // v4.7 수정: 오프셋을 0으로 설정하여 완벽한 오버랩
+    const TOUCH_OFFSET = 0; 
 
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -343,7 +342,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v4.6 (50px 오프셋) ---
+    // --- 드래그 앤 드롭 시스템 v4.7 (오프셋 0px = 완벽 오버랩) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -434,7 +433,7 @@
         const helper = document.getElementById('drag-helper');
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        // v4.6: 50px 오프셋 적용
+        // v4.7: 0px 오프셋 -> 손가락과 헬퍼 중앙 일치
         helper.style.left = cx + 'px';
         helper.style.top = (cy - TOUCH_OFFSET) + 'px'; 
     }
@@ -443,6 +442,7 @@
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         
+        // v4.7: 0px 오프셋 -> 손가락 위치 바로 아래 탐지
         const targetY = cy - TOUCH_OFFSET; 
 
         const helper = document.getElementById('drag-helper');
