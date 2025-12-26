@@ -1,13 +1,12 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"><title>암기 퍼즐 PRO v9.3</title><style>:root{--p:#2e7d32;--s:#66bb6a;--bg:#e8f5e9;--grid-bg:#a5d6a7;--cell-bg:#c8e6c9;--bonus:#fdd835;--excel:#1b5e20;--text:#1b5e20;--danger:#ef5350;--mask:#f57c00;--mask-active:#29b6f6}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;user-select:none}body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);color:var(--text);width:100vw;height:100dvh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none}.screen{display:none;width:100%;max-width:450px;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;height:100%;flex-direction:column}.active{display:flex}@keyframes shake{0%{transform:translate(1px,1px)}10%{transform:translate(-1px,-2px)rotate(-1deg)}50%{transform:translate(-1px,2px)rotate(-1deg)}100%{transform:translate(1px,-2px)rotate(-1deg)}}.shaking{animation:shake .5s}.float-score{position:absolute;color:var(--bonus);font-weight:900;font-size:1.5rem;pointer-events:none;animation:up 1s ease-out forwards;z-index:100}@keyframes up{to{opacity:0;transform:translateY(-50px)scale(1.5)}}.header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;min-height:70px;width:100%}#grid-container{flex:1;display:flex;align-items:center;justify-content:center;width:100%;position:relative}#grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;background:var(--grid-bg);padding:6px;border-radius:12px;width:100%;aspect-ratio:1/1}.cell{background:var(--cell-bg);border-radius:4px;aspect-ratio:1/1;transition:.2s}.cell.filled{background:var(--p);transform:scale(.95);box-shadow:0 2px 4px rgba(0,0,0,.1)}.cell.bonus-filled{background:var(--bonus);transform:scale(.95)}.cell.clearing{background:var(--s);transform:scale(1.1);filter:brightness(1.2)}.cell.ghost{background:var(--p);opacity:.5;transform:scale(.95);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}.cell.ghost-bonus{background:var(--bonus);opacity:.6;transform:scale(.95)}#tray{display:flex;justify-content:center;align-items:center;gap:8px;height:110px;margin-bottom:15px;background:#fff;border-radius:20px;padding:10px;width:100%;box-shadow:0 4px 10px rgba(0,0,0,.05)}.shape-preview{width:75px;height:75px;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;border-radius:10px;padding:4px;background:#fff}.shape-preview.dragging{opacity:0;visibility:hidden}.preview-cell{aspect-ratio:1/1}.preview-cell.filled{background:var(--p);border-radius:1px}.preview-cell.bonus{background:var(--bonus);border-radius:1px}#drag-helper{position:fixed;z-index:1000;display:none;opacity:1;pointer-events:none}#drag-helper .preview-cell.filled{background:rgba(46,125,50,0.1);border:3px solid var(--p);border-radius:4px;transform:scale(0.95);box-sizing:border-box}#drag-helper .preview-cell.bonus{background:rgba(253,216,53,0.2);border:3px solid var(--bonus);border-radius:4px;transform:scale(0.95);box-sizing:border-box}.menu-btn{width:100%;padding:16px;margin:8px 0;border:none;border-radius:15px;color:#fff;font-size:1.1rem;font-weight:bold;cursor:pointer;box-shadow:0 4px 6px rgba(0,0,0,.1)}.btn-game{background:var(--p)}.btn-manage{background:#8d6e63}.word-card{background:#fff;padding:15px;margin-bottom:10px;border-radius:12px;border-left:5px solid var(--p);box-shadow:0 2px 5px rgba(0,0,0,.05);position:relative;white-space:pre-wrap}.word-list-container{flex:1;overflow-y:auto;margin:15px 0;width:100%}#quiz-modal{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(5px)}.modal-inner{background:#fff;padding:20px;border-radius:25px;width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;max-height:90vh;overflow-y:auto}#q-input{width:100%;height:50px;padding:12px;border:2px solid var(--grid-bg);border-radius:12px;font-size:1rem;margin-bottom:10px;resize:none}#q-text{width:100%;background:var(--bg);padding:15px;border-radius:12px;margin-bottom:15px;text-align:left;max-height:100px;overflow-y:auto;font-weight:500;white-space:pre-wrap}#toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99999;pointer-events:none;display:flex;justify-content:center;width:100%}.toast{background:rgba(46,125,50,.95);color:#fff;padding:12px 24px;border-radius:30px;font-weight:bold;opacity:0;transform:translateY(20px);transition:.3s}.toast.show{opacity:1;transform:translateY(0)}.toast.error{background:rgba(231,76,60,.95)}.toast.success{background:rgba(67,160,71,.95)}.toast.info{background:rgba(30,136,229,.95)}.file-ops{display:flex;flex-wrap:wrap;gap:12px;width:100%;margin-top:20px}.btn-outline{flex:1;min-width:30%;background:#fff;color:var(--text);border:3px solid #ccc;padding:18px 5px;border-radius:15px;font-size:1.1rem;font-weight:900;text-align:center}.btn-append{background:#e8f5e9;border-color:var(--p);color:var(--p)}#excel-area{display:none;width:100%;background:#fff;padding:10px;border:2px dashed var(--excel);border-radius:10px;margin-bottom:15px}#excel-input{width:100%;height:60px;padding:8px;border:1px solid #ccc;border-radius:5px;font-family:monospace;white-space:pre}#new-q,#new-a{flex:1;height:60px;padding:10px;border:1px solid #ddd;border-radius:8px;resize:none}
-/* v9.3 에디터 스타일: 실시간 뷰 추가 */
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"><title>암기 퍼즐 PRO v9.4</title><style>:root{--p:#2e7d32;--s:#66bb6a;--bg:#e8f5e9;--grid-bg:#a5d6a7;--cell-bg:#c8e6c9;--bonus:#fdd835;--excel:#1b5e20;--text:#1b5e20;--danger:#ef5350;--mask:#f57c00;--mask-active:#29b6f6}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;user-select:none}body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);color:var(--text);width:100vw;height:100dvh;display:flex;flex-direction:column;align-items:center;overflow:hidden} /* v9.4: body 스크롤 잠금 해제, overflow:hidden은 유지하되 screen에서 처리 */ .screen{display:none;width:100%;max-width:450px;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;height:100%;flex-direction:column;overflow-y:auto; /* v9.4: 스크롤 허용 */} .active{display:flex}@keyframes shake{0%{transform:translate(1px,1px)}10%{transform:translate(-1px,-2px)rotate(-1deg)}50%{transform:translate(-1px,2px)rotate(-1deg)}100%{transform:translate(1px,-2px)rotate(-1deg)}}.shaking{animation:shake .5s}.float-score{position:absolute;color:var(--bonus);font-weight:900;font-size:1.5rem;pointer-events:none;animation:up 1s ease-out forwards;z-index:100}@keyframes up{to{opacity:0;transform:translateY(-50px)scale(1.5)}}.header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;min-height:70px;width:100%;flex-shrink:0}#grid-container{flex:1;display:flex;align-items:center;justify-content:center;width:100%;position:relative;touch-action:none /* 게임판만 터치 잠금 */}#grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;background:var(--grid-bg);padding:6px;border-radius:12px;width:100%;aspect-ratio:1/1}.cell{background:var(--cell-bg);border-radius:4px;aspect-ratio:1/1;transition:.2s}.cell.filled{background:var(--p);transform:scale(.95);box-shadow:0 2px 4px rgba(0,0,0,.1)}.cell.bonus-filled{background:var(--bonus);transform:scale(.95)}.cell.clearing{background:var(--s);transform:scale(1.1);filter:brightness(1.2)}.cell.ghost{background:var(--p);opacity:.5;transform:scale(.95);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}.cell.ghost-bonus{background:var(--bonus);opacity:.6;transform:scale(.95)}#tray{display:flex;justify-content:center;align-items:center;gap:8px;height:110px;margin-bottom:15px;background:#fff;border-radius:20px;padding:10px;width:100%;box-shadow:0 4px 10px rgba(0,0,0,.05);flex-shrink:0;touch-action:none}.shape-preview{width:75px;height:75px;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;border-radius:10px;padding:4px;background:#fff}.shape-preview.dragging{opacity:0;visibility:hidden}.preview-cell{aspect-ratio:1/1}.preview-cell.filled{background:var(--p);border-radius:1px}.preview-cell.bonus{background:var(--bonus);border-radius:1px}#drag-helper{position:fixed;z-index:1000;display:none;opacity:1;pointer-events:none}#drag-helper .preview-cell.filled{background:rgba(46,125,50,0.1);border:3px solid var(--p);border-radius:4px;transform:scale(0.95);box-sizing:border-box}#drag-helper .preview-cell.bonus{background:rgba(253,216,53,0.2);border:3px solid var(--bonus);border-radius:4px;transform:scale(0.95);box-sizing:border-box}.menu-btn{width:100%;padding:16px;margin:8px 0;border:none;border-radius:15px;color:#fff;font-size:1.1rem;font-weight:bold;cursor:pointer;box-shadow:0 4px 6px rgba(0,0,0,.1);flex-shrink:0}.btn-game{background:var(--p)}.btn-manage{background:#8d6e63}.word-card{background:#fff;padding:15px;margin-bottom:10px;border-radius:12px;border-left:5px solid var(--p);box-shadow:0 2px 5px rgba(0,0,0,.05);position:relative;white-space:pre-wrap}.word-list-container{flex:1;overflow-y:auto;margin:15px 0;width:100%}#quiz-modal{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(5px)}.modal-inner{background:#fff;padding:20px;border-radius:25px;width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;max-height:90vh;overflow-y:auto}#q-input{width:100%;height:50px;padding:12px;border:2px solid var(--grid-bg);border-radius:12px;font-size:1rem;margin-bottom:10px;resize:none}#q-text{width:100%;background:var(--bg);padding:15px;border-radius:12px;margin-bottom:15px;text-align:left;max-height:100px;overflow-y:auto;font-weight:500;white-space:pre-wrap}#toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99999;pointer-events:none;display:flex;justify-content:center;width:100%}.toast{background:rgba(46,125,50,.95);color:#fff;padding:12px 24px;border-radius:30px;font-weight:bold;opacity:0;transform:translateY(20px);transition:.3s}.toast.show{opacity:1;transform:translateY(0)}.toast.error{background:rgba(231,76,60,.95)}.toast.success{background:rgba(67,160,71,.95)}.toast.info{background:rgba(30,136,229,.95)}.file-ops{display:flex;flex-wrap:wrap;gap:12px;width:100%;margin-top:20px}.btn-outline{flex:1;min-width:30%;background:#fff;color:var(--text);border:3px solid #ccc;padding:18px 5px;border-radius:15px;font-size:1.1rem;font-weight:900;text-align:center}.btn-append{background:#e8f5e9;border-color:var(--p);color:var(--p)}#excel-area{display:none;width:100%;background:#fff;padding:10px;border:2px dashed var(--excel);border-radius:10px;margin-bottom:15px}#excel-input{width:100%;height:60px;padding:8px;border:1px solid #ccc;border-radius:5px;font-family:monospace;white-space:pre}#new-q,#new-a{flex:1;height:60px;padding:10px;border:1px solid #ddd;border-radius:8px;resize:none}
+/* v9.4 에디터 스타일: 스크롤 충돌 방지 및 정확도 개선 */
 #img-maker-area{display:none;width:100%;background:#fff;padding:10px;border-radius:15px;margin-bottom:15px;border:2px solid var(--p)}
-#editor-viewport{width:100%;height:60vh;background:#333;overflow:hidden;position:relative;border-radius:10px;touch-action:none;border:2px solid #666}
-#editor-content{transform-origin:0 0;position:absolute;top:0;left:0;width:100%;height:100%}
-#editor-img{display:block;width:auto;height:auto;max-width:none;pointer-events:none} /* max-width 해제 */
+#editor-viewport{width:100%;height:500px;background:#333;overflow:hidden;position:relative;border-radius:10px;touch-action:none; /* 에디터 내부만 스크롤 잠금 */ border:2px solid #666; margin: 10px 0;}
+#editor-content{transform-origin:0 0;position:absolute;top:0;left:0;width:100%;}
+#editor-img{display:block;width:100%;height:auto;pointer-events:none; user-select: none;} /* v9.4: width 100%로 초기화 */
 #editor-overlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10}
 .mask-box{position:absolute;background:rgba(245,124,0,0.5);border:2px solid var(--mask);cursor:pointer;box-sizing:border-box;touch-action:none}
 .mask-box.selected{background:rgba(41,182,246,0.5);border:2px solid var(--mask-active);z-index:100}
-/* 실시간 드래그 박스 */
 #temp-mask{position:absolute;background:rgba(41,182,246,0.3);border:2px dashed var(--mask-active);z-index:999;pointer-events:none;display:none}
 .resize-handle{position:absolute;bottom:-15px;right:-15px;width:30px;height:30px;background:var(--mask-active);border-radius:50%;z-index:101;display:none;box-shadow:0 2px 5px rgba(0,0,0,0.3)}
 .mask-box.selected .resize-handle{display:block}
@@ -39,7 +38,6 @@ function showQuestion(){
     document.getElementById('q-title').innerText=isTestMode?"[테스트] 모든 빈칸을 맞추세요":`검토 (${curQuiz+1}/3)`;
     document.getElementById('q-feedback').innerText="";document.getElementById('q-input').value="";
     document.getElementById('q-submit').style.display="block";document.getElementById('q-next').style.display="none";
-    
     if(q.type==='image'){
         const imgDiv=document.createElement('div');imgDiv.id='quiz-img-container';
         const img=document.createElement('img');img.id='quiz-img';img.src='./images/'+q.img;
@@ -91,7 +89,7 @@ function finishQuestion(isCorrect){
     document.getElementById('q-next').style.display="block";
 }
 function nextQuestion(){curQuiz++;if(curQuiz<3)showQuestion();else{document.getElementById('quiz-modal').style.display='none';if(quizCorrect>=2)refillTray(quizCorrect);else{showToast("불합격!",'error');setTimeout(startQuiz,1000)}}}
-// v9.3: 좌표 보정 & 실시간 드래그 뷰
+// v9.4: 좌표 계산 완전 수정 (DOM Rect) & 스크롤 잠금 해제
 let makerImgLoaded=false,makerMasks=[],editMode='move',selectedMaskIdx=-1;
 let scale=1,pX=0,pY=0,lastDist=0,isPinching=false,isPanning=false,startPanX,startPanY;
 function toggleImgMaker(){const e=document.getElementById('img-maker-area');e.style.display=e.style.display==='none'?'block':'none'}
@@ -105,7 +103,11 @@ vp.addEventListener('touchstart',e=>{
     else if(editMode==='draw'){handleDrawStart(e)}
 });
 vp.addEventListener('touchmove',e=>{
-    if(!makerImgLoaded)return;e.preventDefault();
+    if(!makerImgLoaded)return;
+    // v9.4: 에디터 안에서 조작할 때만 스크롤 막음 (중요)
+    if(editMode==='move' || isPinching || isPanning) e.preventDefault(); 
+    if(editMode==='draw') e.preventDefault();
+
     if(isPinching&&e.touches.length===2){const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const delta=dist/lastDist;scale=Math.min(Math.max(scale*delta,1),5);lastDist=dist;updateTransform();return}
     if(isPanning){pX=e.touches[0].clientX-startPanX;pY=e.touches[0].clientY-startPanY;updateTransform()}
     else if(editMode==='draw'){handleDrawMove(e)}
@@ -113,56 +115,65 @@ vp.addEventListener('touchmove',e=>{
 vp.addEventListener('touchend',e=>{isPinching=false;isPanning=false;if(editMode==='draw')handleDrawEnd(e)});
 function updateTransform(){ct.style.transform=`translate(${pX}px,${pY}px) scale(${scale})`}
 let drawStartX,drawStartY,isResizing=false,isMovingMask=false;
-// 좌표 계산 핵심 로직 (v9.3)
+// v9.4: 핵심 좌표 계산 로직 (DOM Rect 기준) - 보이는 그대로 계산
 function getRelCoord(e){
-    const r=vp.getBoundingClientRect(); // 뷰포트 기준
+    const img = document.getElementById('editor-img');
+    const r = img.getBoundingClientRect(); // 이미지의 실제 화면상 위치와 크기 (Zoom, Pan 모두 반영됨)
     const cx=e.touches?e.changedTouches[0].clientX:e.clientX;
     const cy=e.touches?e.changedTouches[0].clientY:e.clientY;
-    // (클릭좌표 - 뷰포트시작 - 팬이동) / 스케일
-    return {x:(cx-r.left-pX)/scale, y:(cy-r.top-pY)/scale};
+    
+    // 이미지 내 상대 좌표 (0~100%)
+    const xPct = ((cx - r.left) / r.width) * 100;
+    const yPct = ((cy - r.top) / r.height) * 100;
+    return {x: xPct, y: yPct};
 }
 function handleDrawStart(e){
     const p=getRelCoord(e);
-    // 수정 로직
     if(selectedMaskIdx!==-1){
-        const m=makerMasks[selectedMaskIdx]; const r=document.getElementById('editor-img').getBoundingClientRect(); const w=r.width/scale; const h=r.height/scale;
-        const mx=m.x/100*w, my=m.y/100*h, mw=m.w/100*w, mh=m.h/100*h;
-        if(p.x>mx+mw-30 && p.x<mx+mw+30 && p.y>my+mh-30 && p.y<my+mh+30){isResizing=true;return}
-        if(p.x>mx && p.x<mx+mw && p.y>my && p.y<my+mh){isMovingMask=true;drawStartX=p.x;drawStartY=p.y;return}
+        const m=makerMasks[selectedMaskIdx]; 
+        // 선택 오차 범위 (화면상 픽셀 단위 아님, %단위이므로 대략적)
+        // 정확도를 위해 다시 픽셀로 환산해서 체크
+        const r = document.getElementById('editor-img').getBoundingClientRect();
+        const mx=m.x/100*r.width, my=m.y/100*r.height, mw=m.w/100*r.width, mh=m.h/100*r.height;
+        const px=p.x/100*r.width, py=p.y/100*r.height;
+
+        if(px>mx+mw-30 && px<mx+mw+30 && py>my+mh-30 && py<my+mh+30){isResizing=true;return}
+        if(px>mx && px<mx+mw && py>my && py<my+mh){isMovingMask=true;drawStartX=p.x;drawStartY=p.y;return}
     }
-    // 새 그리기
     if(e.target.classList.contains('mask-box')){
         const idx=parseInt(e.target.dataset.idx); selectMask(idx); isMovingMask=true; drawStartX=p.x; drawStartY=p.y;
     } else {
         selectedMaskIdx=-1; renderMakerMasks(); 
         drawStartX=p.x; drawStartY=p.y;
-        // 임시 박스 표시
+        // 임시 박스 표시 (초기화)
         const tm=document.getElementById('temp-mask'); tm.style.display='block';
-        tm.style.left=drawStartX+'px'; tm.style.top=drawStartY+'px'; tm.style.width='0px'; tm.style.height='0px';
+        const img = document.getElementById('editor-img');
+        tm.style.left=drawStartX+'%'; tm.style.top=drawStartY+'%'; tm.style.width='0%'; tm.style.height='0%';
     }
 }
 function handleDrawMove(e){
-    const p=getRelCoord(e); const r=document.getElementById('editor-img').getBoundingClientRect(); const w=r.width/scale; const h=r.height/scale;
+    const p=getRelCoord(e);
     if(isResizing && selectedMaskIdx!==-1){
-        const m=makerMasks[selectedMaskIdx]; const mx=m.x/100*w, my=m.y/100*h;
-        m.w = Math.max(10, (p.x - mx)) / w * 100; m.h = Math.max(10, (p.y - my)) / h * 100; renderMakerMasks();
+        const m=makerMasks[selectedMaskIdx];
+        m.w = Math.max(1, p.x - m.x); m.h = Math.max(1, p.y - m.y); renderMakerMasks();
     } else if(isMovingMask && selectedMaskIdx!==-1){
-        const m=makerMasks[selectedMaskIdx]; const dx=(p.x-drawStartX)/w*100; const dy=(p.y-drawStartY)/h*100;
+        const m=makerMasks[selectedMaskIdx];
+        const dx=p.x-drawStartX; const dy=p.y-drawStartY;
         m.x+=dx; m.y+=dy; drawStartX=p.x; drawStartY=p.y; renderMakerMasks();
     } else {
-        // 새 그리기 실시간 뷰
+        // 새 그리기 실시간 뷰 (v9.3)
         const tm=document.getElementById('temp-mask');
         const l=Math.min(drawStartX,p.x), t=Math.min(drawStartY,p.y), wd=Math.abs(p.x-drawStartX), ht=Math.abs(p.y-drawStartY);
-        tm.style.left=l+'px'; tm.style.top=t+'px'; tm.style.width=wd+'px'; tm.style.height=ht+'px';
+        tm.style.left=l+'%'; tm.style.top=t+'%'; tm.style.width=wd+'%'; tm.style.height=ht+'%';
     }
 }
 function handleDrawEnd(e){
     document.getElementById('temp-mask').style.display='none';
     if(isResizing||isMovingMask){isResizing=false;isMovingMask=false;return}
-    const p=getRelCoord(e); const r=document.getElementById('editor-img').getBoundingClientRect(); const w=r.width/scale; const h=r.height/scale;
-    if(Math.abs(p.x-drawStartX)>10 && Math.abs(p.y-drawStartY)>10){
+    const p=getRelCoord(e);
+    if(Math.abs(p.x-drawStartX)>1 && Math.abs(p.y-drawStartY)>1){ // 1% 이상 움직였을 때만 생성
         const a=prompt("정답 입력"); if(a){
-            makerMasks.push({x:Math.min(drawStartX,p.x)/w*100, y:Math.min(drawStartY,p.y)/h*100, w:Math.abs(p.x-drawStartX)/w*100, h:Math.abs(p.y-drawStartY)/h*100, a:a});
+            makerMasks.push({x:Math.min(drawStartX,p.x), y:Math.min(drawStartY,p.y), w:Math.abs(p.x-drawStartX), h:Math.abs(p.y-drawStartY), a:a});
             selectMask(makerMasks.length-1);
         }
     }
