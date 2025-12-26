@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.7</title>
+    <title>암기 퍼즐 PRO v3.8</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -26,6 +26,33 @@
         }
         .active { display: flex; }
         
+        /* 흔들림 효과 애니메이션 */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shaking { animation: shake 0.5s; }
+
+        /* 점수 떠오르는 효과 */
+        .float-score {
+            position: absolute; color: var(--bonus); font-weight: 900; font-size: 1.5rem;
+            pointer-events: none; animation: floatUp 1s ease-out forwards; text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
+        }
+
         .header { 
             display: flex; justify-content: space-between; align-items: center; 
             padding: 10px 0; min-height: 70px; width: 100%;
@@ -33,17 +60,18 @@
         
         #grid-container {
             flex: 1; display: flex; align-items: center; justify-content: center;
-            width: 100%; min-height: 0;
+            width: 100%; min-height: 0; position: relative;
         }
         #grid { 
             display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; 
             background: #cbd5e0; padding: 6px; border-radius: 12px; 
             width: 100%; aspect-ratio: 1 / 1;
+            transition: transform 0.1s;
         }
         .cell { background: #edf2f7; border-radius: 4px; aspect-ratio: 1 / 1; transition: all 0.2s; }
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
-        .cell.clearing { background: var(--s); transform: scale(1.1); }
+        .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
 
         #tray { 
             display: flex; justify-content: center; align-items: center; gap: 8px;
@@ -139,6 +167,81 @@
     </div>
 
 <script>
+    // --- 오디오 시스템 (Web Audio API) ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioContext = null;
+
+    function initAudio() {
+        if (!audioContext) audioContext = new AudioCtx();
+        if (audioContext.state === 'suspended') audioContext.resume();
+    }
+
+    const soundTypes = {
+        click: (t) => { // 블록 선택
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.frequency.setValueAtTime(600, t);
+            osc.frequency.exponentialRampToValueAtTime(300, t + 0.1);
+            gain.gain.setValueAtTime(0.1, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.connect(gain); gain.connect(audioContext.destination);
+            osc.start(t); osc.stop(t + 0.1);
+        },
+        place: (t) => { // 블록 배치 (탁!)
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.frequency.setValueAtTime(200, t);
+            osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.type = 'triangle';
+            osc.connect(gain); gain.connect(audioContext.destination);
+            osc.start(t); osc.stop(t + 0.15);
+        },
+        clear: (t) => { // 줄 삭제 (띠링~)
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+            notes.forEach((freq, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.frequency.value = freq;
+                const time = t + i * 0.05;
+                gain.gain.setValueAtTime(0.1, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+                osc.connect(gain); gain.connect(audioContext.destination);
+                osc.start(time); osc.stop(time + 0.3);
+            });
+        },
+        correct: (t) => { // 딩동댕
+            [523.25, 659.25, 783.99].forEach((f,i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.frequency.value = f;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.1, t + i*0.1);
+                gain.gain.linearRampToValueAtTime(0, t + i*0.1 + 0.4);
+                osc.connect(gain); gain.connect(audioContext.destination);
+                osc.start(t + i*0.1); osc.stop(t + i*0.1 + 0.4);
+            });
+        },
+        wrong: (t) => { // 땡
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, t);
+            osc.frequency.linearRampToValueAtTime(100, t + 0.3);
+            gain.gain.setValueAtTime(0.1, t);
+            gain.gain.linearRampToValueAtTime(0, t + 0.3);
+            osc.connect(gain); gain.connect(audioContext.destination);
+            osc.start(t); osc.stop(t + 0.3);
+        }
+    };
+
+    function playSound(type) {
+        if(!audioContext) return;
+        soundTypes[type](audioContext.currentTime);
+    }
+
+    // --- 게임 로직 시작 ---
     const GRID_SIZE = 8;
     const TOTAL_CELLS = 64;
     const SHAPES = [
@@ -168,19 +271,16 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 세션 생성 로직 v3.7 (피셔-예이츠 셔플) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
-        
         let allWords = [...vocabulary];
-        // 피셔-예이츠 셔플 적용 (완전 무작위)
+        // 피셔-예이츠 셔플
         for (let i = allWords.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [allWords[i], allWords[j]] = [allWords[j], allWords[i]];
         }
         sessionQuizzes = allWords.slice(0, 3);
-        
         document.getElementById('quiz-modal').style.display = 'flex';
         showQuestion();
     }
@@ -203,17 +303,17 @@
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
 
-        // O/X 판정
         if (inputNoSpace === "O" || inputNoSpace === "X") {
             if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
         } 
-        // 주관식 판정
         if (!isCorrect && inputNoSpace === actualAnsNoSpace) isCorrect = true;
 
         if (isCorrect) {
             quizCorrect++;
+            playSound('correct'); // 정답 효과음
             feedbackEl.innerHTML = `<span style='color:var(--s)'>정답! ✨<br>정답: ${originalAns}</span>`;
         } else {
+            playSound('wrong'); // 오답 효과음
             feedbackEl.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${originalAns}</span>`;
         }
         document.getElementById('q-submit').style.display = "none";
@@ -234,7 +334,7 @@
         trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);
         if(correctCount === 3) {
             const bonus = [[0,0]]; bonus.isBonus = true;
-            trayShapes.push(bonus); // 보너스 블록 추가 (총 4개)
+            trayShapes.push(bonus);
         }
         selectedShapeIndex = null;
         renderTray();
@@ -248,7 +348,7 @@
             if(s === null) return;
             const div = document.createElement('div');
             div.className = 'shape-preview' + (selectedShapeIndex === i ? ' selected' : '');
-            div.onclick = () => { selectedShapeIndex = i; renderTray(); };
+            div.onclick = () => { playSound('click'); selectedShapeIndex = i; renderTray(); };
             for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
                 const cell = document.createElement('div');
                 const isPart = s.some(p=>p[0]===r&&p[1]===c);
@@ -270,6 +370,7 @@
         if(!fit) return;
 
         if(lastPreviewIdx === idx) {
+            playSound('place'); // 착수음
             s.forEach(p => { 
                 const t = (r+p[0])*8 + (c+p[1]);
                 grid[t] = 1; 
@@ -281,6 +382,7 @@
             if(trayShapes.every(v => v === null)) startQuiz();
             else checkGameOver();
         } else {
+            playSound('click'); // 선택음
             document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
             s.forEach(p => {
                 const t = (r+p[0])*8 + (c+p[1]);
@@ -290,6 +392,26 @@
         }
     }
 
+    // --- 시각 효과 (화면 흔들림 & 점수 띄우기) ---
+    function triggerShake() {
+        const g = document.getElementById('grid');
+        g.classList.remove('shaking');
+        void g.offsetWidth; // trigger reflow
+        g.classList.add('shaking');
+    }
+
+    function showFloatingScore(txt) {
+        const el = document.createElement('div');
+        el.className = 'float-score';
+        el.innerText = `+${txt}`;
+        // 그리드 중앙쯤에 표시
+        const rect = document.getElementById('grid').getBoundingClientRect();
+        el.style.left = (rect.width / 2 - 20) + "px";
+        el.style.top = (rect.height / 2 - 20) + "px";
+        document.getElementById('grid-container').appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
     function checkLines() {
         let rs=[], cs=[];
         for(let i=0; i<8; i++) {
@@ -297,13 +419,23 @@
             let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
             if(col.every(v=>v===1)) cs.push(i);
         }
-        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
-        cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
-        if(rs.length+cs.length > 0) {
-            score += (rs.length+cs.length)*10;
+        
+        const count = rs.length + cs.length;
+        if(count > 0) {
+            playSound('clear'); // 삭제음
+            triggerShake();     // 쿵! 효과
+            
+            // 콤보 점수 계산 (많이 지울수록 점수 뻥튀기)
+            let gained = count * 10 * count; 
+            score += gained;
+            showFloatingScore(gained); // 점수 띄우기
+
             if(score > highScore) { highScore=score; localStorage.setItem('puzzleBest8x8', highScore); }
             updateScores();
         }
+
+        rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
+        cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
     }
 
     function animateClear(i) { 
@@ -330,7 +462,12 @@
         }
     }
 
-    function startGame() { if(vocabulary.length < 1) return alert("문제를 등록해주세요."); showScreen('game'); initGame(); }
+    function startGame() { 
+        initAudio(); // 오디오 엔진 시동 (아이폰 정책 대응)
+        if(vocabulary.length < 1) return alert("문제를 등록해주세요."); 
+        showScreen('game'); initGame(); 
+    }
+
     function initGame() {
         score = 0; grid.fill(0); updateScores();
         const gridEl = document.getElementById('grid'); gridEl.innerHTML = "";
@@ -342,6 +479,7 @@
         refillTray(0);
     }
     
+    // 문제 관리 로직 (기존 유지)
     function isDuplicate(q, a) {
         const nQ = q.replace(/\s/g, "").toUpperCase();
         const nA = a.replace(/\s/g, "").toUpperCase();
