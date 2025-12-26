@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.4</title>
+    <title>암기 퍼즐 PRO v3.5</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -49,13 +49,14 @@
 
         #tray { 
             display: flex; justify-content: space-around; align-items: center; 
-            height: 100px; margin-bottom: 15px; background: white; 
+            height: 110px; margin-bottom: 15px; background: white; 
             border-radius: 20px; padding: 10px; width: 100%;
         }
-        .shape-preview { width: 80px; height: 80px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; border-radius: 10px; padding: 6px; border: 2px solid transparent; }
-        .shape-preview.selected { border-color: var(--preview); transform: scale(1.1); background: #fffaf0; }
-        .preview-cell.filled { background: var(--p); border-radius: 1.5px; }
-        .preview-cell.bonus { background: var(--bonus); border-radius: 1.5px; }
+        .shape-preview { width: 90px; height: 90px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; }
+        .shape-preview.selected { border-color: var(--preview); transform: scale(1.05); background: #fffaf0; }
+        .preview-cell { aspect-ratio: 1/1; }
+        .preview-cell.filled { background: var(--p); border-radius: 1px; }
+        .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
         .btn-game { background: var(--p); }
@@ -112,7 +113,7 @@
             <div id="shape-1" class="shape-preview" onclick="selectShape(1)"></div>
             <div id="shape-2" class="shape-preview" onclick="selectShape(2)"></div>
         </div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록 선택 후 한 칸을 두 번 눌러 설치</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">난이도 상승: 대형 블록 주의!</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -146,7 +147,28 @@
 <script>
     const GRID_SIZE = 8;
     const TOTAL_CELLS = 64;
-    const SHAPES = [[[0,0],[0,1],[1,0],[1,1]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[1,1]],[[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],[[0,1],[1,0],[1,1],[1,2]],[[0,0]],[[0,0],[0,1],[1,0]]];
+    
+    // 블록 라이브러리 (5칸짜리 대형 블록 포함)
+    const SHAPES = [
+        [[0,0],[0,1],[1,0],[1,1]], // 2x2 사각형
+        [[0,0],[1,0],[2,0],[3,0],[4,0]], // 5칸 일자 (세로)
+        [[0,0],[0,1],[0,2],[0,3],[0,4]], // 5칸 일자 (가로)
+        [[0,0],[1,0],[2,0]], // 3칸 일자
+        [[0,0],[0,1],[0,2]], // 3칸 가로
+        [[0,0],[1,0],[2,0],[2,1],[2,2]], // 대형 L (세로형)
+        [[0,0],[0,1],[0,2],[1,2],[2,2]], // 대형 L (역방향)
+        [[0,0],[1,1],[2,2],[3,3]], // 4칸 대각선
+        [[0,2],[1,2],[2,0],[2,1],[2,2]], // 대형 T/L
+        [[0,1],[1,0],[1,1],[1,2],[2,1]], // 십자형(Plus)
+        [[0,0],[0,1],[1,1],[1,2],[2,2]], // 계단형
+        [[0,0],[1,0],[1,1]], // 작은 L
+        [[0,0],[0,1],[1,0]], // 작은 L 반전
+        [[0,0],[0,1],[0,2],[0,3]], // 4칸 일자
+        [[0,0],[1,0],[2,0],[3,0]], // 4칸 세로
+        [[0,0],[0,1],[1,1],[2,1],[2,2]], // 대형 S형
+        [[0,0],[0,1],[0,2],[1,0],[2,0]], // 기역자 5칸
+        [[0,0],[1,0],[2,0],[0,1],[0,2]]  // 니은자 5칸
+    ];
     
     let score = 0, highScore = localStorage.getItem('puzzleBest8x8') || 0;
     let grid = Array(TOTAL_CELLS).fill(0), trayShapes = [null, null, null];
@@ -186,28 +208,18 @@
         document.getElementById('q-next').style.display = "none";
     }
 
-    // --- 정답 체크 로직 v3.4 (이미지 오답 이슈 해결 버전) ---
     function checkQuizAnswer() {
         const rawInput = document.getElementById('q-input').value.trim();
         const inputNoSpace = rawInput.replace(/\s/g, "").toUpperCase(); 
-        
         const originalAns = sessionQuizzes[curQuiz].a;
         const actualAnsNoSpace = originalAns.replace(/\s/g, "").toUpperCase(); 
-        
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
 
-        // [판정 1] O/X 한 글자 입력 시: 정답의 '첫 글자'와 대조 (해설 무시)
         if (inputNoSpace === "O" || inputNoSpace === "X") {
-            if (actualAnsNoSpace.charAt(0) === inputNoSpace) {
-                isCorrect = true;
-            }
+            if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
         } 
-        
-        // [판정 2] 일반 주관식: 띄어쓰기 제외하고 전체가 일치해야 함
-        if (!isCorrect && inputNoSpace === actualAnsNoSpace) {
-            isCorrect = true;
-        }
+        if (!isCorrect && inputNoSpace === actualAnsNoSpace) isCorrect = true;
 
         if (isCorrect) {
             quizCorrect++;
@@ -215,7 +227,6 @@
         } else {
             feedbackEl.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${originalAns}</span>`;
         }
-        
         document.getElementById('q-submit').style.display = "none";
         document.getElementById('q-next').style.display = "block";
     }
@@ -226,21 +237,15 @@
             showQuestion();
         } else {
             document.getElementById('quiz-modal').style.display = 'none';
-            window.scrollTo(0,0);
-            if (quizCorrect >= 2) {
-                refillTray(quizCorrect);
-            } else {
-                alert("불합격! 2문제 이상 맞춰야 합니다.");
-                startQuiz();
-            }
+            if (quizCorrect >= 2) refillTray(quizCorrect);
+            else { alert("불합격! 2문제 이상 맞춰야 합니다."); startQuiz(); }
         }
     }
 
     function refillTray(correctCount) {
         trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);
         if(correctCount === 3) {
-            const bonusShape = [[0,0]];
-            bonusShape.isBonus = true;
+            const bonusShape = [[0,0]]; bonusShape.isBonus = true;
             trayShapes[0] = bonusShape; 
         }
         renderTray();
@@ -253,7 +258,7 @@
             el.innerHTML = ""; el.style.opacity = s ? "1" : "0.1";
             el.className = 'shape-preview' + (selectedShapeIndex===i?' selected':'');
             if(!s) return;
-            for(let r=0; r<4; r++) for(let c=0; c<4; c++) {
+            for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
                 const div = document.createElement('div');
                 const isPart = s.some(p=>p[0]===r&&p[1]===c);
                 div.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
@@ -279,11 +284,8 @@
             });
             trayShapes[selectedShapeIndex] = null; selectedShapeIndex = null; lastPreviewIdx = null;
             renderTray(); checkLines();
-            if(trayShapes.every(v => v === null)) {
-                startQuiz();
-            } else {
-                checkGameOver();
-            }
+            if(trayShapes.every(v => v === null)) startQuiz();
+            else checkGameOver();
         } else {
             document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
             targets.forEach(t => document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)");
@@ -308,10 +310,8 @@
     }
 
     function animateClear(i) { 
-        grid[i]=0; 
-        const el=document.getElementById('cell-'+i); 
-        el.classList.add('clearing'); 
-        setTimeout(()=>{ el.className = 'cell'; }, 300); 
+        grid[i]=0; const el=document.getElementById('cell-'+i); 
+        el.classList.add('clearing'); setTimeout(()=>{ el.className = 'cell'; }, 300); 
     }
 
     function checkGameOver() {
@@ -336,13 +336,11 @@
     function startGame() { if(vocabulary.length < 1) return alert("문제를 먼저 등록해주세요."); showScreen('game'); initGame(); }
     function initGame() {
         score = 0; grid.fill(0); updateScores();
-        const gridEl = document.getElementById('grid');
-        gridEl.innerHTML = "";
+        const gridEl = document.getElementById('grid'); gridEl.innerHTML = "";
         for (let i = 0; i < TOTAL_CELLS; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell'; cell.id = 'cell-' + i;
-            cell.onclick = () => handleCellClick(i);
-            gridEl.appendChild(cell);
+            cell.onclick = () => handleCellClick(i); gridEl.appendChild(cell);
         }
         refillTray(0);
     }
@@ -363,8 +361,7 @@
             if(isDuplicate(q, a)) { alert("이미 목록에 있는 중복된 문제입니다!"); return; }
             vocabulary.push({q,a}); 
             localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
-            renderWordList(); 
-            document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; 
+            renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; 
         }
     }
 
@@ -392,11 +389,9 @@
                     vocabulary = [...vocabulary, ...filteredData];
                     alert(`중복 문제 ${dupCount}개를 제외한 ${addedCount}개의 문제가 추가되었습니다!`);
                 } else {
-                    vocabulary = newData;
-                    alert("목록을 새로 교체했습니다!");
+                    vocabulary = newData; alert("목록을 새로 교체했습니다!");
                 }
-                localStorage.setItem('myVocab', JSON.stringify(vocabulary));
-                renderWordList();
+                localStorage.setItem('myVocab', JSON.stringify(vocabulary)); renderWordList();
             } catch (err) { alert("파일 형식이 올바르지 않습니다."); }
             e.target.value = '';
         };
@@ -404,8 +399,7 @@
     }
     function exportJSON() {
         const blob = new Blob([JSON.stringify(vocabulary, null, 2)], {type: "application/json"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
         a.download = `quiz_backup.json`; a.click();
     }
     function confirmExit() { if(confirm("홈으로 나갈까요?")) showScreen('home'); }
