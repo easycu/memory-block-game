@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v5.2</title>
+    <title>암기 퍼즐 PRO v5.3</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -87,12 +87,14 @@
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
-        /* 드래그 헬퍼 */
+        /* 드래그 헬퍼 (따라다니는 블록) */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
             display: none; 
             opacity: 0.9; 
-            transform: translate(-50%, -100%); /* 바닥 중앙 기준 */
+            /* v5.3 중요 수정: transform 제거 (JS 좌표 계산과 충돌 방지) */
+            margin: 0;
+            padding: 0;
         }
         #drag-helper .preview-cell { background: transparent; } 
         #drag-helper .preview-cell.filled, 
@@ -152,7 +154,7 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요 (터치한 곳 바로 위에 보임)</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -184,7 +186,7 @@
     </div>
 
 <script>
-    // --- 오디오 시스템 ---
+    // --- 오디오 시스템 (유지) ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioContext = null;
 
@@ -252,7 +254,8 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    const TOUCH_OFFSET = 75; 
+    // v5.3: 60px 간격 (최적의 시야각)
+    const TOUCH_OFFSET = 60; 
     let anchorRow = 0; 
     let anchorCol = 0; 
 
@@ -268,7 +271,7 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 로직 (유지) ---
+    // --- 퀴즈 로직 (v3.9 유지) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
@@ -344,7 +347,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v5.2 (유효성 검사 & 핀포인트 정렬) ---
+    // --- 드래그 앤 드롭 시스템 v5.3 (CSS 충돌 해결 & 핀포인트 정렬) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -386,7 +389,7 @@
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
         
-        // 앵커: 바닥 중앙
+        // 앵커: 모양의 바닥행(maxR) + 수평중앙열(반올림)
         anchorR = maxR;
         anchorC = Math.round((minC + maxC) / 2);
 
@@ -413,7 +416,7 @@
         moveHelper(e);
         e.currentTarget.classList.add('dragging');
         playSound('click');
-        ghostIndices = []; // 시작 시 초기화
+        ghostIndices = []; 
     }
 
     function handleTouchMove(e) {
@@ -452,6 +455,8 @@
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
 
+        // 앵커(바닥 중앙)가 TOUCH_OFFSET 지점에 오도록 헬퍼의 left/top을 정밀 계산
+        // CSS transform을 뺐으므로 이 계산이 그대로 반영됨
         const relAnchorR = anchorR - minR;
         const relAnchorC = anchorC - minC;
         
@@ -466,7 +471,7 @@
     }
 
     function updateGhost(e) {
-        // v5.2: 매 프레임마다 유효성 상태 초기화 (중요!)
+        // v5.3: 안전장치 (매 프레임 초기화)
         clearGhost();
         ghostIndices = [];
 
@@ -475,12 +480,13 @@
         
         const targetY = cy - TOUCH_OFFSET; 
 
+        // 헬퍼가 요소 인식을 방해하지 않도록 잠깐 숨김
         const helper = document.getElementById('drag-helper');
         helper.style.display = 'none'; 
         const el = document.elementFromPoint(cx, targetY);
         helper.style.display = 'grid';
 
-        if(!el || !el.classList.contains('cell')) return; // 밖으로 나가면 빈 상태 유지
+        if(!el || !el.classList.contains('cell')) return; 
 
         const targetIdx = parseInt(el.id.split('-')[1]);
         const tR = Math.floor(targetIdx / 8);
