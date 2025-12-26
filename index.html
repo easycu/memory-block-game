@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.1</title>
+    <title>암기 퍼즐 PRO v3.3</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -186,13 +186,27 @@
         document.getElementById('q-next').style.display = "none";
     }
 
+    // --- 정답 체크 로직 v3.3 (O/X 앞글자 + 주관식 전체 매칭) ---
     function checkQuizAnswer() {
-        const input = document.getElementById('q-input').value.replace(/\s/g, "").toUpperCase();
-        const actualAns = sessionQuizzes[curQuiz].a.replace(/\s/g, "").toUpperCase();
+        const userInput = document.getElementById('q-input').value.trim().toUpperCase();
+        const inputNoSpace = userInput.replace(/\s/g, ""); 
+        
         const originalAns = sessionQuizzes[curQuiz].a;
+        const actualAnsNoSpace = originalAns.replace(/\s/g, "").toUpperCase(); 
         
         const feedbackEl = document.getElementById('q-feedback');
-        if (input === actualAns) {
+        let isCorrect = false;
+
+        // O, X 한 글자 입력 시 앞글자 매칭 (해설 무시용)
+        if ((inputNoSpace === "O" || inputNoSpace === "X") && actualAnsNoSpace.startsWith(inputNoSpace)) {
+            isCorrect = true;
+        } 
+        // 일반 주관식: 띄어쓰기 제외 전체 일치
+        else if (inputNoSpace === actualAnsNoSpace) {
+            isCorrect = true;
+        }
+
+        if (isCorrect) {
             quizCorrect++;
             feedbackEl.innerHTML = `<span style='color:var(--s)'>정답입니다! ✨<br>정답: ${originalAns}</span>`;
         } else {
@@ -330,7 +344,6 @@
     }
     function selectShape(i) { if(trayShapes[i]) { selectedShapeIndex = i; renderTray(); } }
     
-    // --- 문제 관리 및 중복 체크 로직 ---
     function isDuplicate(q, a) {
         const newQ = q.replace(/\s/g, "").toUpperCase();
         const newA = a.replace(/\s/g, "").toUpperCase();
@@ -343,10 +356,7 @@
     function addWord() {
         const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
         if(q&&a) { 
-            if(isDuplicate(q, a)) {
-                alert("이미 목록에 있는 중복된 문제입니다!");
-                return;
-            }
+            if(isDuplicate(q, a)) { alert("이미 목록에 있는 중복된 문제입니다!"); return; }
             vocabulary.push({q,a}); 
             localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
             renderWordList(); 
@@ -370,15 +380,10 @@
             try {
                 const newData = JSON.parse(evt.target.result);
                 if (fileMode === 'append') {
-                    let dupCount = 0;
-                    let addedCount = 0;
+                    let dupCount = 0; let addedCount = 0;
                     const filteredData = newData.filter(item => {
-                        if(isDuplicate(item.q, item.a)) {
-                            dupCount++;
-                            return false;
-                        }
-                        addedCount++;
-                        return true;
+                        if(isDuplicate(item.q, item.a)) { dupCount++; return false; }
+                        addedCount++; return true;
                     });
                     vocabulary = [...vocabulary, ...filteredData];
                     alert(`중복 문제 ${dupCount}개를 제외한 ${addedCount}개의 문제가 추가되었습니다!`);
