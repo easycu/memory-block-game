@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v5.5</title>
+    <title>암기 퍼즐 PRO v5.6</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
             --preview: #e67e22; --danger: #e74c3c; --bonus: #f1c40f;
+            --excel: #27ae60;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }
         
@@ -71,7 +72,6 @@
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
         
-        /* 고스트 블록 (v5.5) */
         .cell.ghost { background: var(--p); opacity: 0.6; transform: scale(0.95); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.7); }
         .cell.ghost-bonus { background: var(--bonus); opacity: 0.6; transform: scale(0.95); }
 
@@ -87,14 +87,10 @@
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
-        /* 드래그 헬퍼 (v5.5: CSS 개입 완전 차단) */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
-            display: none; 
-            opacity: 0.9;
-            top: 0; left: 0; /* 초기화 */
+            display: none; opacity: 0.9;
             margin: 0; padding: 0;
-            /* transform 제거: JS로만 제어 */
         }
         #drag-helper .preview-cell { background: transparent; } 
         #drag-helper .preview-cell.filled, 
@@ -125,6 +121,10 @@
         .file-ops { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 10px; }
         .btn-outline { flex: 1; min-width: 45%; background: white; color: #666; border: 1px solid #ddd; padding: 10px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
         .btn-append { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
+        
+        /* 엑셀 입력창 스타일 */
+        #excel-area { display: none; width: 100%; background: #f0fff4; padding: 10px; border-radius: 10px; border: 2px dashed var(--excel); margin-bottom: 15px; }
+        #excel-input { width: 100%; height: 100px; font-family: monospace; white-space: pre; padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 0.8rem; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -154,15 +154,25 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요 (터치한 곳 바로 위에 보임)</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
     </div>
 
     <div id="screen-manage" class="screen">
         <h2 style="margin: 15px 0;">문제 관리</h2>
         <div style="background:white; padding:15px; border-radius:15px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-            <textarea id="new-q" style="width:100%; height:80px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제를 입력하세요"></textarea>
-            <textarea id="new-a" style="width:100%; height:60px; margin-bottom:10px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답을 입력하세요 (O/X 또는 주관식)"></textarea>
-            <button onclick="addWord()" class="menu-btn btn-game" style="margin:0; padding: 12px;">한 개 추가</button>
+            <div style="display:flex; gap:5px;">
+                <textarea id="new-q" style="flex:1; height:60px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="문제"></textarea>
+                <textarea id="new-a" style="flex:1; height:60px; padding:10px; border:1px solid #ddd; border-radius:8px; resize:none;" placeholder="정답"></textarea>
+            </div>
+            <button onclick="addWord()" class="menu-btn btn-game" style="margin:8px 0; padding: 12px; font-size: 0.9rem;">한 개 추가</button>
+            
+            <button class="menu-btn" style="background:var(--excel); margin:0 0 10px 0; padding: 10px; font-size: 0.9rem;" onclick="toggleExcel()">📋 엑셀 붙여넣기 (열기/닫기)</button>
+            <div id="excel-area">
+                <p style="font-size:0.75rem; color:#27ae60; margin-bottom:5px;"><b>사용법:</b> 엑셀에서 [문제] [정답] 두 열을 복사해서 붙여넣으세요.</p>
+                <textarea id="excel-input" placeholder="예시:&#13;&#10;Apple	사과&#13;&#10;Banana	바나나"></textarea>
+                <button class="menu-btn btn-game" style="margin:0; padding:8px; font-size:0.8rem;" onclick="parseExcel()">일괄 등록하기</button>
+            </div>
+
             <div class="file-ops">
                 <button class="btn-outline" onclick="exportJSON()">내보내기</button>
                 <button class="btn-outline" onclick="triggerFile('import')">덮어쓰기</button>
@@ -254,7 +264,7 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    // v5.5: 60px 간격 (손가락 한마디 위)
+    // v5.5 유지: 60px 간격
     const TOUCH_OFFSET = 60; 
     let anchorRow = 0; 
     let anchorCol = 0; 
@@ -271,7 +281,7 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 로직 (v3.9 유지) ---
+    // --- 퀴즈 로직 (유지) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
@@ -347,7 +357,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v5.5 (절대 좌표 엔진) ---
+    // --- 드래그 앤 드롭 시스템 v5.5 (완벽한 좌표 동기화) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -383,14 +393,12 @@
         const cellRect = document.querySelector('.cell').getBoundingClientRect();
         const cellSize = cellRect.width;
 
-        // Bounding Box (모양의 실제 크기) 계산
         let minR=5, maxR=-1, minC=5, maxC=-1;
         s.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
         
-        // 앵커: 바닥 중앙 (모양 내 상대좌표)
         anchorR = maxR;
         anchorC = Math.round((minC + maxC) / 2);
 
@@ -450,29 +458,20 @@
         const cellSize = cellRect.width;
         const s = trayShapes[dragShapeIndex];
         
-        // 헬퍼의 전체 크기 및 앵커 위치 재계산
         let minR=5, maxR=-1, minC=5, maxC=-1;
         s.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
             minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
         });
 
-        // 앵커(바닥 중앙)가 (cx, cy-OFFSET)에 오도록 Helper의 좌상단(Left, Top) 역계산
-        // Helper 내부에서 앵커의 위치: 
-        // colOffset = anchorC - minC
-        // rowOffset = anchorR - minR
+        const relAnchorR = anchorR - minR;
+        const relAnchorC = anchorC - minC;
         
-        const relC = anchorC - minC;
-        const relR = anchorR - minR;
-        
-        // 목표 지점
         const targetX = cx;
         const targetY = cy - TOUCH_OFFSET;
         
-        // Helper의 Left = 목표X - (앵커의 가로 위치 + 셀반너비)
-        const helperLeft = targetX - (relC * cellSize + cellSize / 2);
-        // Helper의 Top = 목표Y - (앵커의 세로 위치 + 셀반높이)
-        const helperTop = targetY - (relR * cellSize + cellSize / 2);
+        const helperLeft = targetX - (relAnchorC * cellSize + cellSize / 2);
+        const helperTop = targetY - (relAnchorR * cellSize + cellSize / 2);
 
         helper.style.left = helperLeft + 'px';
         helper.style.top = helperTop + 'px'; 
@@ -487,10 +486,7 @@
         const cellRect = document.querySelector('.cell').getBoundingClientRect();
         const cellSize = cellRect.width;
         
-        // v5.5: 프로브(Probe) 지점 = 헬퍼의 바닥 중앙(앵커) 그 자체
-        // 헬퍼가 정확히 위치를 잡고 있으므로, 목표 지점도 동일함
-        // 미세 보정: 셀의 정중앙을 찌르기 위해 약간 위로(-5px) 보정
-        const probeY = cy - TOUCH_OFFSET - 5; 
+        const probeY = cy - TOUCH_OFFSET - (cellSize / 2); 
 
         const helper = document.getElementById('drag-helper');
         helper.style.display = 'none'; 
@@ -504,7 +500,6 @@
         const tC = targetIdx % 8;
         const s = trayShapes[dragShapeIndex];
 
-        // 그리드 상의 타겟 셀(tR, tC)이 앵커(블록 바닥중앙)가 되도록 배치
         const shiftR = tR - anchorR;
         const shiftC = tC - anchorC;
         
@@ -614,7 +609,7 @@
         refillTray(0);
     }
     
-    // 문제 관리 로직 (기존 유지)
+    // 문제 관리 로직 (기존 유지) + v5.6 엑셀 기능
     function isDuplicate(q, a) {
         const nQ = q.replace(/\s/g, "").toUpperCase(); const nA = a.replace(/\s/g, "").toUpperCase();
         return vocabulary.some(item => item.q.replace(/\s/g, "").toUpperCase() === nQ && item.a.replace(/\s/g, "").toUpperCase() === nA);
@@ -627,6 +622,37 @@
             renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; 
         }
     }
+    // --- v5.6: 엑셀 파싱 로직 ---
+    function toggleExcel() {
+        const el = document.getElementById('excel-area');
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+    function parseExcel() {
+        const raw = document.getElementById('excel-input').value;
+        if(!raw.trim()) return alert("내용을 입력해주세요.");
+        
+        const rows = raw.split('\n');
+        let added = 0;
+        
+        rows.forEach(row => {
+            const cols = row.split('\t'); // 탭으로 분리
+            if(cols.length >= 2) {
+                const q = cols[0].trim();
+                const a = cols[1].trim();
+                if(q && a && !isDuplicate(q, a)) {
+                    vocabulary.push({q, a, wrongCount: 0});
+                    added++;
+                }
+            }
+        });
+        
+        localStorage.setItem('myVocab', JSON.stringify(vocabulary));
+        renderWordList();
+        document.getElementById('excel-input').value = "";
+        alert(`${added}개의 단어가 성공적으로 추가되었습니다!`);
+        toggleExcel();
+    }
+
     function renderWordList() {
         document.getElementById('word-list').innerHTML = vocabulary.map((v, i) => `
             <div class="word-card"><b>${v.q}</b><br><small>정답: ${v.a}</small>
