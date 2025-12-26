@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.9</title>
+    <title>암기 퍼즐 PRO v4.0</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
             --preview: #e67e22; --danger: #e74c3c; --bonus: #f1c40f;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }
         
         body { 
             font-family: -apple-system, 'Pretendard', sans-serif; 
@@ -70,17 +70,29 @@
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
+        .cell.ghost { background: var(--p); opacity: 0.5; transform: scale(0.9); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5); }
+        .cell.ghost-bonus { background: var(--bonus); opacity: 0.5; transform: scale(0.9); }
 
         #tray { 
             display: flex; justify-content: center; align-items: center; gap: 8px;
             height: 110px; margin-bottom: 15px; background: white; 
             border-radius: 20px; padding: 10px; width: 100%;
+            touch-action: none; /* 중요: 브라우저 스크롤 방지 */
         }
-        .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; }
-        .shape-preview.selected { border-color: var(--preview); transform: scale(1.1); background: #fffaf0; }
+        .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; transition: opacity 0.2s; }
+        .shape-preview.dragging { opacity: 0.3; } 
         .preview-cell { aspect-ratio: 1/1; }
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
+
+        /* 드래그 중인 블록 스타일 */
+        #drag-helper {
+            position: fixed; pointer-events: none; z-index: 1000;
+            display: none; grid-template-columns: repeat(5, 1fr); gap: 1px;
+            width: 75px; height: 75px; /* 초기값, JS에서 조정됨 */
+            opacity: 0.9; transform: translate(-50%, -150%); /* 손가락 위로 띄우기 */
+        }
+        #drag-helper .preview-cell { border-radius: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
         .btn-game { background: var(--p); }
@@ -108,6 +120,7 @@
     </style>
 </head>
 <body>
+    <div id="drag-helper"></div>
 
     <div id="screen-home" class="screen active">
         <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
@@ -133,7 +146,7 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">모든 블록을 설치해야 다음 퀴즈가 나옵니다.</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그해서 빈칸에 채우세요!</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -165,7 +178,7 @@
     </div>
 
 <script>
-    // --- 오디오 시스템 ---
+    // --- 오디오 시스템 (v3.8 동일) ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioContext = null;
 
@@ -176,70 +189,44 @@
 
     const soundTypes = {
         click: (t) => {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.frequency.setValueAtTime(600, t);
-            osc.frequency.exponentialRampToValueAtTime(300, t + 0.1);
-            gain.gain.setValueAtTime(0.1, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.connect(gain); gain.connect(audioContext.destination);
-            osc.start(t); osc.stop(t + 0.1);
+            const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+            osc.frequency.setValueAtTime(600, t); osc.frequency.exponentialRampToValueAtTime(300, t + 0.1);
+            gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.connect(gain); gain.connect(audioContext.destination); osc.start(t); osc.stop(t + 0.1);
         },
         place: (t) => {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.frequency.setValueAtTime(200, t);
-            osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
-            gain.gain.setValueAtTime(0.2, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.type = 'triangle';
-            osc.connect(gain); gain.connect(audioContext.destination);
-            osc.start(t); osc.stop(t + 0.15);
+            const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+            osc.frequency.setValueAtTime(200, t); osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.type = 'triangle'; osc.connect(gain); gain.connect(audioContext.destination); osc.start(t); osc.stop(t + 0.15);
         },
         clear: (t) => {
             const notes = [523.25, 659.25, 783.99, 1046.50];
             notes.forEach((freq, i) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.frequency.value = freq;
-                const time = t + i * 0.05;
-                gain.gain.setValueAtTime(0.1, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-                osc.connect(gain); gain.connect(audioContext.destination);
-                osc.start(time); osc.stop(time + 0.3);
+                const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+                osc.frequency.value = freq; const time = t + i * 0.05;
+                gain.gain.setValueAtTime(0.1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+                osc.connect(gain); gain.connect(audioContext.destination); osc.start(time); osc.stop(time + 0.3);
             });
         },
         correct: (t) => {
             [523.25, 659.25, 783.99].forEach((f,i) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.frequency.value = f;
-                osc.type = 'sine';
-                gain.gain.setValueAtTime(0.1, t + i*0.1);
-                gain.gain.linearRampToValueAtTime(0, t + i*0.1 + 0.4);
-                osc.connect(gain); gain.connect(audioContext.destination);
-                osc.start(t + i*0.1); osc.stop(t + i*0.1 + 0.4);
+                const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+                osc.frequency.value = f; osc.type = 'sine';
+                gain.gain.setValueAtTime(0.1, t + i*0.1); gain.gain.linearRampToValueAtTime(0, t + i*0.1 + 0.4);
+                osc.connect(gain); gain.connect(audioContext.destination); osc.start(t + i*0.1); osc.stop(t + i*0.1 + 0.4);
             });
         },
         wrong: (t) => {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(150, t);
-            osc.frequency.linearRampToValueAtTime(100, t + 0.3);
-            gain.gain.setValueAtTime(0.1, t);
-            gain.gain.linearRampToValueAtTime(0, t + 0.3);
-            osc.connect(gain); gain.connect(audioContext.destination);
-            osc.start(t); osc.stop(t + 0.3);
+            const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(100, t + 0.3);
+            gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.3);
+            osc.connect(gain); gain.connect(audioContext.destination); osc.start(t); osc.stop(t + 0.3);
         }
     };
+    function playSound(type) { if(audioContext) soundTypes[type](audioContext.currentTime); }
 
-    function playSound(type) {
-        if(!audioContext) return;
-        soundTypes[type](audioContext.currentTime);
-    }
-
-    // --- 게임 로직 ---
+    // --- 게임 기본 변수 ---
     const GRID_SIZE = 8;
     const TOTAL_CELLS = 64;
     const SHAPES = [
@@ -252,9 +239,13 @@
     
     let score = 0, highScore = localStorage.getItem('puzzleBest8x8') || 0;
     let grid = Array(TOTAL_CELLS).fill(0), trayShapes = [];
-    let selectedShapeIndex = null, lastPreviewIdx = null;
     let vocabulary = JSON.parse(localStorage.getItem('myVocab')) || [{q:"암기 퍼즐 시작!", a:"O", wrongCount: 0}];
     let fileMode = 'import';
+
+    // --- 드래그 앤 드롭 변수 ---
+    let isDragging = false;
+    let dragShapeIndex = null;
+    let ghostIndices = []; 
 
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -262,46 +253,34 @@
         window.scrollTo(0, 0); updateScores();
         if(id === 'manage') renderWordList();
     }
-
     function updateScores() {
         document.getElementById('high-score-home').innerText = highScore;
         document.getElementById('high-score-game').innerText = highScore;
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 로직 v3.9 (오답 가중치) ---
+    // --- 퀴즈 및 게임 로직 (v3.9 유지) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
-        
         let allWords = [...vocabulary];
-        // 피셔-예이츠 셔플로 일단 전체를 섞음
         for (let i = allWords.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [allWords[i], allWords[j]] = [allWords[j], allWords[i]];
         }
-
-        // 1. 오답 이력이 있는 문제들만 추출
         let wrongWords = allWords.filter(v => v.wrongCount > 0);
-        
         let finalSelection = [];
-        // 2. 1문제는 무조건 오답 목록에서 추출 (있을 경우)
         if(wrongWords.length > 0) {
             finalSelection.push(wrongWords[0]);
-            // 선택된 문제는 전체 목록에서 잠시 제외하여 중복 방지
             allWords = allWords.filter(v => v !== wrongWords[0]);
         }
-        
-        // 3. 나머지는 전체 목록(이미 섞임)에서 순서대로 채움
         while(finalSelection.length < 3 && allWords.length > 0) {
             finalSelection.push(allWords.shift());
         }
-
         sessionQuizzes = finalSelection;
         document.getElementById('quiz-modal').style.display = 'flex';
         showQuestion();
     }
-
     function showQuestion() {
         const q = sessionQuizzes[curQuiz];
         document.getElementById('q-title').innerText = `검토 (${curQuiz + 1}/3)`;
@@ -311,7 +290,6 @@
         document.getElementById('q-submit').style.display = "block";
         document.getElementById('q-next').style.display = "none";
     }
-
     function checkQuizAnswer() {
         const rawInput = document.getElementById('q-input').value.trim();
         const inputNoSpace = rawInput.replace(/\s/g, "").toUpperCase(); 
@@ -319,29 +297,24 @@
         const actualAnsNoSpace = originalAns.replace(/\s/g, "").toUpperCase(); 
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
-
         if (inputNoSpace === "O" || inputNoSpace === "X") {
             if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
         } 
         if (!isCorrect && inputNoSpace === actualAnsNoSpace) isCorrect = true;
 
         if (isCorrect) {
-            quizCorrect++;
-            playSound('correct');
-            // 정답을 맞히면 오답 카운트 감소 (복습 완료 처리)
+            quizCorrect++; playSound('correct');
             if(sessionQuizzes[curQuiz].wrongCount > 0) sessionQuizzes[curQuiz].wrongCount--;
             feedbackEl.innerHTML = `<span style='color:var(--s)'>정답! ✨<br>정답: ${originalAns}</span>`;
         } else {
             playSound('wrong');
-            // 오답 시 가중치 증가
             sessionQuizzes[curQuiz].wrongCount = (sessionQuizzes[curQuiz].wrongCount || 0) + 1;
             feedbackEl.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${originalAns}</span>`;
         }
-        localStorage.setItem('myVocab', JSON.stringify(vocabulary)); // 가중치 변화 저장
+        localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
         document.getElementById('q-submit').style.display = "none";
         document.getElementById('q-next').style.display = "block";
     }
-
     function nextQuestion() {
         curQuiz++;
         if (curQuiz < 3) showQuestion();
@@ -358,19 +331,26 @@
             const bonus = [[0,0]]; bonus.isBonus = true;
             trayShapes.push(bonus);
         }
-        selectedShapeIndex = null;
         renderTray();
         checkGameOver();
     }
 
+    // --- v4.0 드래그 앤 드롭 핵심 로직 ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
         trayShapes.forEach((s, i) => {
             if(s === null) return;
             const div = document.createElement('div');
-            div.className = 'shape-preview' + (selectedShapeIndex === i ? ' selected' : '');
-            div.onclick = () => { playSound('click'); selectedShapeIndex = i; renderTray(); };
+            div.className = 'shape-preview';
+            
+            // 터치 이벤트 연결
+            div.addEventListener('touchstart', (e) => handleTouchStart(e, i), {passive: false});
+            div.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false});
+            div.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: false});
+            // 마우스 이벤트 연결 (PC 테스트용)
+            div.addEventListener('mousedown', (e) => handleTouchStart(e, i));
+
             for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
                 const cell = document.createElement('div');
                 const isPart = s.some(p=>p[0]===r&&p[1]===c);
@@ -381,56 +361,143 @@
         });
     }
 
-    function handleCellClick(idx) {
-        if(selectedShapeIndex === null || trayShapes[selectedShapeIndex] === null) return;
-        const s = trayShapes[selectedShapeIndex], r = Math.floor(idx/8), c = idx%8;
-        const fit = s.every(p => {
-            const nr=r+p[0], nc=c+p[1];
-            return nr<8 && nc<8 && grid[nr*8+nc]===0;
-        });
-        if(!fit) return;
+    function handleTouchStart(e, idx) {
+        if(e.cancelable) e.preventDefault(); // 스크롤 방지
+        isDragging = true;
+        dragShapeIndex = idx;
+        const s = trayShapes[idx];
 
-        if(lastPreviewIdx === idx) {
-            playSound('place');
-            s.forEach(p => { 
-                const t = (r+p[0])*8 + (c+p[1]);
-                grid[t] = 1; 
-                document.getElementById('cell-'+t).className = s.isBonus ? 'cell bonus-filled' : 'cell filled';
-            });
-            trayShapes[selectedShapeIndex] = null;
-            selectedShapeIndex = null; lastPreviewIdx = null;
-            renderTray(); checkLines();
-            if(trayShapes.every(v => v === null)) startQuiz();
-            else checkGameOver();
+        // 드래그 헬퍼(따라다니는 블록) 생성
+        const helper = document.getElementById('drag-helper');
+        helper.innerHTML = "";
+        // 헬퍼 크기 설정 (그리드 셀 크기 참고)
+        const cellRect = document.querySelector('.cell').getBoundingClientRect();
+        const cellSize = cellRect.width;
+        helper.style.width = (cellSize * 5 + 4) + 'px'; // 5칸 + 간격
+        helper.style.height = (cellSize * 5 + 4) + 'px';
+        
+        for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
+            const cell = document.createElement('div');
+            const isPart = s.some(p=>p[0]===r&&p[1]===c);
+            cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
+            helper.appendChild(cell);
+        }
+        
+        helper.style.display = "grid";
+        moveHelper(e);
+        
+        // 트레이의 원본은 흐릿하게
+        e.currentTarget.classList.add('dragging');
+        playSound('click');
+    }
+
+    function handleTouchMove(e) {
+        if(!isDragging) return;
+        if(e.cancelable) e.preventDefault();
+        moveHelper(e);
+        updateGhost(e);
+    }
+
+    function handleTouchEnd(e) {
+        if(!isDragging) return;
+        isDragging = false;
+        document.getElementById('drag-helper').style.display = "none";
+        
+        // 원본 스타일 복구
+        document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging'));
+
+        if(ghostIndices.length > 0) {
+            // 설치 확정
+            placeBlock(ghostIndices, trayShapes[dragShapeIndex]);
         } else {
-            playSound('click');
-            document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
-            s.forEach(p => {
-                const t = (r+p[0])*8 + (c+p[1]);
-                document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)";
+            // 설치 실패 (원위치)
+            clearGhost();
+        }
+        ghostIndices = [];
+        dragShapeIndex = null;
+    }
+
+    function moveHelper(e) {
+        const helper = document.getElementById('drag-helper');
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        helper.style.left = cx + 'px';
+        helper.style.top = cy + 'px';
+    }
+
+    function updateGhost(e) {
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // 손가락 위치에 있는 요소 확인
+        // 손가락보다 살짝 위(-50px)를 기준으로 잡아야 정확함 (Helper Offset 고려)
+        const el = document.elementFromPoint(cx, cy - 50); 
+        
+        clearGhost();
+
+        if(!el || !el.classList.contains('cell')) return; // 그리드 밖임
+
+        const targetIdx = parseInt(el.id.split('-')[1]);
+        const r = Math.floor(targetIdx / 8);
+        const c = targetIdx % 8;
+        const s = trayShapes[dragShapeIndex];
+        
+        // 유효성 검사
+        let indices = [];
+        const isValid = s.every(p => {
+            const nr = r + p[0];
+            const nc = c + p[1];
+            if(nr < 8 && nc < 8 && grid[nr*8 + nc] === 0) {
+                indices.push(nr*8 + nc);
+                return true;
+            }
+            return false;
+        });
+
+        if(isValid) {
+            ghostIndices = indices;
+            indices.forEach(idx => {
+                const cell = document.getElementById('cell-' + idx);
+                cell.classList.add(s.isBonus ? 'ghost-bonus' : 'ghost');
             });
-            lastPreviewIdx = idx;
         }
     }
 
+    function clearGhost() {
+        document.querySelectorAll('.cell').forEach(c => {
+            c.classList.remove('ghost');
+            c.classList.remove('ghost-bonus');
+        });
+    }
+
+    function placeBlock(indices, s) {
+        playSound('place');
+        indices.forEach(idx => {
+            grid[idx] = 1;
+            const cell = document.getElementById('cell-' + idx);
+            cell.className = s.isBonus ? 'cell bonus-filled' : 'cell filled';
+        });
+        
+        trayShapes[dragShapeIndex] = null;
+        renderTray();
+        checkLines();
+
+        // 4개 모두 썼는지 확인
+        if(trayShapes.every(v => v === null)) startQuiz();
+        else checkGameOver();
+    }
+
+    // --- (이하 checkLines, checkGameOver 등 기존 로직 유지) ---
     function triggerShake() {
         const g = document.getElementById('grid');
-        g.classList.remove('shaking');
-        void g.offsetWidth; 
-        g.classList.add('shaking');
+        g.classList.remove('shaking'); void g.offsetWidth; g.classList.add('shaking');
     }
-
     function showFloatingScore(txt) {
-        const el = document.createElement('div');
-        el.className = 'float-score';
-        el.innerText = `+${txt}`;
+        const el = document.createElement('div'); el.className = 'float-score'; el.innerText = `+${txt}`;
         const rect = document.getElementById('grid').getBoundingClientRect();
-        el.style.left = (rect.width / 2 - 20) + "px";
-        el.style.top = (rect.height / 2 - 20) + "px";
-        document.getElementById('grid-container').appendChild(el);
-        setTimeout(() => el.remove(), 1000);
+        el.style.left = (rect.width / 2 - 20) + "px"; el.style.top = (rect.height / 2 - 20) + "px";
+        document.getElementById('grid-container').appendChild(el); setTimeout(() => el.remove(), 1000);
     }
-
     function checkLines() {
         let rs=[], cs=[];
         for(let i=0; i<8; i++) {
@@ -438,13 +505,10 @@
             let col=[]; for(let j=0; j<8; j++) col.push(grid[j*8+i]);
             if(col.every(v=>v===1)) cs.push(i);
         }
-        
         const count = rs.length + cs.length;
         if(count > 0) {
-            playSound('clear');
-            triggerShake();
-            let gained = count * 10 * count; 
-            score += gained;
+            playSound('clear'); triggerShake();
+            let gained = count * 10 * count; score += gained;
             showFloatingScore(gained);
             if(score > highScore) { highScore=score; localStorage.setItem('puzzleBest8x8', highScore); }
             updateScores();
@@ -452,12 +516,10 @@
         rs.forEach(r => { for(let c=0; c<8; c++) animateClear(r*8+c); });
         cs.forEach(c => { for(let r=0; r<8; r++) animateClear(r*8+c); });
     }
-
     function animateClear(i) { 
         grid[i]=0; const el=document.getElementById('cell-'+i); 
         el.classList.add('clearing'); setTimeout(()=>{ el.className = 'cell'; }, 300); 
     }
-
     function checkGameOver() {
         const canPlaceAny = trayShapes.some(s => {
             if(!s) return false;
@@ -472,47 +534,34 @@
             return false;
         });
         if(!canPlaceAny && !trayShapes.every(v => v === null)) {
-            alert("게임 종료! 최종 점수: " + score);
-            showScreen('home');
+            alert("게임 종료! 최종 점수: " + score); showScreen('home');
         }
     }
-
-    function startGame() { 
-        initAudio(); 
-        if(vocabulary.length < 1) return alert("문제를 등록해주세요."); 
-        showScreen('game'); initGame(); 
-    }
-
+    function startGame() { initAudio(); if(vocabulary.length < 1) return alert("문제를 등록해주세요."); showScreen('game'); initGame(); }
     function initGame() {
         score = 0; grid.fill(0); updateScores();
         const gridEl = document.getElementById('grid'); gridEl.innerHTML = "";
         for (let i = 0; i < TOTAL_CELLS; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell'; cell.id = 'cell-' + i;
-            cell.onclick = () => handleCellClick(i); gridEl.appendChild(cell);
+            gridEl.appendChild(cell);
         }
         refillTray(0);
     }
     
+    // 문제 관리 로직 (기존 유지)
     function isDuplicate(q, a) {
-        const nQ = q.replace(/\s/g, "").toUpperCase();
-        const nA = a.replace(/\s/g, "").toUpperCase();
-        return vocabulary.some(item => 
-            item.q.replace(/\s/g, "").toUpperCase() === nQ && 
-            item.a.replace(/\s/g, "").toUpperCase() === nA
-        );
+        const nQ = q.replace(/\s/g, "").toUpperCase(); const nA = a.replace(/\s/g, "").toUpperCase();
+        return vocabulary.some(item => item.q.replace(/\s/g, "").toUpperCase() === nQ && item.a.replace(/\s/g, "").toUpperCase() === nA);
     }
-
     function addWord() {
         const q=document.getElementById('new-q').value.trim(), a=document.getElementById('new-a').value.trim();
         if(q&&a) { 
             if(isDuplicate(q, a)) return alert("중복된 문제입니다!");
-            vocabulary.push({q, a, wrongCount: 0}); 
-            localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
+            vocabulary.push({q, a, wrongCount: 0}); localStorage.setItem('myVocab', JSON.stringify(vocabulary)); 
             renderWordList(); document.getElementById('new-q').value=""; document.getElementById('new-a').value=""; 
         }
     }
-
     function renderWordList() {
         document.getElementById('word-list').innerHTML = vocabulary.map((v, i) => `
             <div class="word-card"><b>${v.q}</b><br><small>정답: ${v.a}</small>
@@ -530,18 +579,9 @@
                 const newData = JSON.parse(evt.target.result);
                 if (fileMode === 'append') {
                     let dup = 0; let add = 0;
-                    newData.forEach(item => {
-                        if(isDuplicate(item.q, item.a)) dup++;
-                        else { 
-                            if(item.wrongCount === undefined) item.wrongCount = 0;
-                            vocabulary.push(item); add++; 
-                        }
-                    });
+                    newData.forEach(item => { if(isDuplicate(item.q, item.a)) dup++; else { vocabulary.push({...item, wrongCount:item.wrongCount||0}); add++; } });
                     alert(`중복 ${dup}개 제외, ${add}개 추가 완료!`);
-                } else { 
-                    vocabulary = newData.map(v => ({...v, wrongCount: v.wrongCount || 0})); 
-                    alert("목록 교체 완료!"); 
-                }
+                } else { vocabulary = newData.map(v => ({...v, wrongCount: v.wrongCount || 0})); alert("목록 교체 완료!"); }
                 localStorage.setItem('myVocab', JSON.stringify(vocabulary)); renderWordList();
             } catch (err) { alert("형식이 잘못되었습니다."); }
             e.target.value = '';
@@ -550,11 +590,13 @@
     }
     function exportJSON() {
         const blob = new Blob([JSON.stringify(vocabulary, null, 2)], {type: "application/json"});
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-        a.download = `quiz_backup.json`; a.click();
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `quiz_backup.json`; a.click();
     }
     function confirmExit() { if(confirm("홈으로 나갈까요?")) showScreen('home'); }
     window.onload = updateScores;
+    // PC 드래그 지원 (마우스)
+    window.addEventListener('mousemove', (e) => { if(isDragging) { moveHelper(e); updateGhost(e); } });
+    window.addEventListener('mouseup', (e) => { if(isDragging) handleTouchEnd(e); });
 </script>
 </body>
 </html>
