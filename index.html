@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.6.1</title>
+    <title>암기 퍼즐 PRO v3.7</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -168,11 +168,19 @@
         document.getElementById('score').innerText = score;
     }
 
-    let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
+    // --- 퀴즈 세션 생성 로직 v3.7 (피셔-예이츠 셔플) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
-        sessionQuizzes = [...vocabulary].sort(() => Math.random() - 0.5).slice(0, 3);
+        
+        let allWords = [...vocabulary];
+        // 피셔-예이츠 셔플 적용 (완전 무작위)
+        for (let i = allWords.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allWords[i], allWords[j]] = [allWords[j], allWords[i]];
+        }
+        sessionQuizzes = allWords.slice(0, 3);
+        
         document.getElementById('quiz-modal').style.display = 'flex';
         showQuestion();
     }
@@ -195,9 +203,11 @@
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
 
+        // O/X 판정
         if (inputNoSpace === "O" || inputNoSpace === "X") {
             if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
         } 
+        // 주관식 판정
         if (!isCorrect && inputNoSpace === actualAnsNoSpace) isCorrect = true;
 
         if (isCorrect) {
@@ -221,12 +231,10 @@
     }
 
     function refillTray(correctCount) {
-        // 새 블록 3개 생성
         trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);
-        // 3문제 정답 시 황금블록 추가 (총 4개)
         if(correctCount === 3) {
             const bonus = [[0,0]]; bonus.isBonus = true;
-            trayShapes.push(bonus);
+            trayShapes.push(bonus); // 보너스 블록 추가 (총 4개)
         }
         selectedShapeIndex = null;
         renderTray();
@@ -257,25 +265,27 @@
         let targets = [];
         const fit = s.every(p => {
             const nr=r+p[0], nc=c+p[1];
-            if(nr<8 && nc<8 && grid[nr*8+nc]===0) { targets.push(nr*8+nc); return true; }
-            return false;
+            return nr<8 && nc<8 && grid[nr*8+nc]===0;
         });
         if(!fit) return;
 
         if(lastPreviewIdx === idx) {
-            targets.forEach(t => { 
+            s.forEach(p => { 
+                const t = (r+p[0])*8 + (c+p[1]);
                 grid[t] = 1; 
                 document.getElementById('cell-'+t).className = s.isBonus ? 'cell bonus-filled' : 'cell filled';
             });
             trayShapes[selectedShapeIndex] = null;
             selectedShapeIndex = null; lastPreviewIdx = null;
             renderTray(); checkLines();
-            // 모든 블록(황금블록 포함)을 썼을 때만 퀴즈 시작
             if(trayShapes.every(v => v === null)) startQuiz();
             else checkGameOver();
         } else {
             document.querySelectorAll('.cell').forEach(ce => ce.style.boxShadow = "none");
-            targets.forEach(t => document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)");
+            s.forEach(p => {
+                const t = (r+p[0])*8 + (c+p[1]);
+                document.getElementById('cell-'+t).style.boxShadow = "inset 0 0 0 3px var(--preview)";
+            });
             lastPreviewIdx = idx;
         }
     }
