@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v4.3</title>
+    <title>암기 퍼즐 PRO v4.4</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -81,15 +81,23 @@
             touch-action: none; 
         }
         .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; transition: opacity 0.2s, visibility 0.2s; }
-        /* v4.3 수정: 드래그 중인 원본 블록을 완전히 숨김 */
+        /* 드래그 중인 원본은 숨김 */
         .shape-preview.dragging { opacity: 0; visibility: hidden; } 
         .preview-cell { aspect-ratio: 1/1; }
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
-        /* 드래그 헬퍼 (따라다니는 블록) - 완전히 숨김 */
+        /* v4.4 수정: 드래그 헬퍼 (따라다니는 블록) 부활 및 스타일링 */
         #drag-helper {
-            display: none !important; /* 아예 안 보이게 처리 */
+            position: fixed; pointer-events: none; z-index: 1000;
+            display: none; /* JS에서 grid로 변경 */
+            opacity: 0.7; /* 반투명하게 */
+            transform: translate(-50%, -50%); /* 중심점 기준 */
+        }
+        #drag-helper .preview-cell { background: transparent; } /* 빈 칸 투명 */
+        #drag-helper .preview-cell.filled, 
+        #drag-helper .preview-cell.bonus { 
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.3); border-radius: 4px;
         }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
@@ -144,7 +152,7 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요 (손가락 위로 표시됨)</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -244,6 +252,8 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
+    // v4.4 수정: 터치 오프셋을 80px로 줄여서 더 직관적으로 변경
+    const DRAG_OFFSET = 80; 
 
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -336,7 +346,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v4.3 (시각 개선 - 원본 숨김 & 오프셋 증가) ---
+    // --- 드래그 앤 드롭 시스템 v4.4 (헬퍼 부활 & 오프셋 최적화) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -345,7 +355,6 @@
             const div = document.createElement('div');
             div.className = 'shape-preview';
             
-            // 터치/마우스 이벤트 연결
             div.addEventListener('touchstart', (e) => handleTouchStart(e, i), {passive: false});
             div.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false});
             div.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: false});
@@ -365,7 +374,39 @@
         if(e.cancelable) e.preventDefault();
         isDragging = true;
         dragShapeIndex = idx;
-        // 헬퍼 코드를 모두 제거하여 아예 보이지 않게 함
+        const s = trayShapes[idx];
+
+        // v4.4 수정: 헬퍼(따라다니는 블록) 생성 및 표시
+        const helper = document.getElementById('drag-helper');
+        helper.innerHTML = "";
+        
+        const cellRect = document.querySelector('.cell').getBoundingClientRect();
+        const cellSize = cellRect.width;
+
+        let minR=5, maxR=-1, minC=5, maxC=-1;
+        s.forEach(p => {
+            minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
+            minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
+        });
+        const rows = maxR - minR + 1;
+        const cols = maxC - minC + 1;
+
+        helper.style.display = "grid"; // v4.4: 다시 표시
+        helper.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
+        helper.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+        helper.style.gap = "1px";
+        helper.style.width = (cols * cellSize + (cols-1)) + 'px';
+        helper.style.height = (rows * cellSize + (rows-1)) + 'px';
+
+        for(let r=minR; r<=maxR; r++) {
+            for(let c=minC; c<=maxC; c++) {
+                const cell = document.createElement('div');
+                const isPart = s.some(p=>p[0]===r&&p[1]===c);
+                cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
+                helper.appendChild(cell);
+            }
+        }
+        
         moveHelper(e);
         e.currentTarget.classList.add('dragging');
         playSound('click');
@@ -381,6 +422,7 @@
     function handleTouchEnd(e) {
         if(!isDragging) return;
         isDragging = false;
+        document.getElementById('drag-helper').style.display = "none"; // v4.4: 헬퍼 숨김
         document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging'));
 
         if(ghostIndices.length > 0) {
@@ -393,19 +435,27 @@
     }
 
     function moveHelper(e) {
-        // 헬퍼가 없으므로 기능 없음
+        const helper = document.getElementById('drag-helper');
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        // v4.4 수정: 헬퍼 위치를 터치 좌표보다 DRAG_OFFSET만큼 위로 설정
+        helper.style.left = cx + 'px';
+        helper.style.top = (cy - DRAG_OFFSET) + 'px'; 
     }
 
     function updateGhost(e) {
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // v4.3 수정: 오프셋을 160으로 증가시켜 손가락과 고스트 간격 확보
-        const touchOffset = 160; 
-        const targetY = cy - touchOffset;
+        // v4.4 수정: 헬퍼와 동일한 위치(DRAG_OFFSET 위)를 타겟으로 설정
+        const targetY = cy - DRAG_OFFSET;
 
+        // 헬퍼 때문에 요소 인식이 안 되는 것을 방지
+        const helper = document.getElementById('drag-helper');
+        helper.style.display = 'none'; 
         const el = document.elementFromPoint(cx, targetY);
-        
+        helper.style.display = 'grid';
+
         clearGhost();
 
         if(!el || !el.classList.contains('cell')) return;
@@ -415,7 +465,6 @@
         const c = targetIdx % 8;
         const s = trayShapes[dragShapeIndex];
         
-        // 블록 바운딩 박스 중심 보정 (드래그하는 모양의 중앙을 기준으로)
         let minR=5, minC=5;
         s.forEach(p => { minR = Math.min(minR, p[0]); minC = Math.min(minC, p[1]); });
         
