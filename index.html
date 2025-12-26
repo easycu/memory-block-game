@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v4.0</title>
+    <title>암기 퍼즐 PRO v4.1</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -70,6 +70,7 @@
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
+        /* 고스트 블록 스타일 */
         .cell.ghost { background: var(--p); opacity: 0.5; transform: scale(0.9); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5); }
         .cell.ghost-bonus { background: var(--bonus); opacity: 0.5; transform: scale(0.9); }
 
@@ -77,22 +78,26 @@
             display: flex; justify-content: center; align-items: center; gap: 8px;
             height: 110px; margin-bottom: 15px; background: white; 
             border-radius: 20px; padding: 10px; width: 100%;
-            touch-action: none; /* 중요: 브라우저 스크롤 방지 */
+            touch-action: none; 
         }
         .shape-preview { width: 75px; height: 75px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; border-radius: 10px; padding: 4px; border: 2px solid transparent; background: #fdfdfd; transition: opacity 0.2s; }
-        .shape-preview.dragging { opacity: 0.3; } 
+        .shape-preview.dragging { opacity: 0.2; } /* 원본은 드래그 중 희미하게 */
         .preview-cell { aspect-ratio: 1/1; }
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
-        /* 드래그 중인 블록 스타일 */
+        /* 드래그 헬퍼 (따라다니는 블록) 스타일 개선 */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
-            display: none; grid-template-columns: repeat(5, 1fr); gap: 1px;
-            width: 75px; height: 75px; /* 초기값, JS에서 조정됨 */
-            opacity: 0.9; transform: translate(-50%, -150%); /* 손가락 위로 띄우기 */
+            display: none; /* JS에서 grid로 변경됨 */
+            opacity: 0.9; transform: translate(-50%, -50%); /* 중심점 기준 */
         }
-        #drag-helper .preview-cell { border-radius: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        #drag-helper .preview-cell { background: transparent; } /* 빈 칸 투명화 */
+        #drag-helper .preview-cell.filled, 
+        #drag-helper .preview-cell.bonus { 
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.3); /* 그림자 효과로 입체감 */
+            border-radius: 4px;
+        }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
         .btn-game { background: var(--p); }
@@ -146,7 +151,7 @@
         </div>
         <div id="grid-container"><div id="grid"></div></div>
         <div id="tray"></div>
-        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그해서 빈칸에 채우세요!</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; text-align: center; margin-bottom: 10px;">블록을 드래그하여 채우세요 (손가락 위로 표시됨)</p>
     </div>
 
     <div id="screen-manage" class="screen">
@@ -178,7 +183,7 @@
     </div>
 
 <script>
-    // --- 오디오 시스템 (v3.8 동일) ---
+    // --- 오디오 시스템 (v3.8) ---
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioContext = null;
 
@@ -259,7 +264,7 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 및 게임 로직 (v3.9 유지) ---
+    // --- 퀴즈 로직 (v3.9: 피셔-예이츠 + 오답가중치) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
@@ -297,6 +302,8 @@
         const actualAnsNoSpace = originalAns.replace(/\s/g, "").toUpperCase(); 
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
+        
+        // 정답 판정 (v3.4: O/X 첫글자, 띄어쓰기 무시)
         if (inputNoSpace === "O" || inputNoSpace === "X") {
             if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
         } 
@@ -325,6 +332,7 @@
         }
     }
 
+    // --- 트레이 리필 (v3.6.1: 4개 강제 사용) ---
     function refillTray(correctCount) {
         trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);
         if(correctCount === 3) {
@@ -335,7 +343,7 @@
         checkGameOver();
     }
 
-    // --- v4.0 드래그 앤 드롭 핵심 로직 ---
+    // --- 드래그 앤 드롭 시스템 v4.1 (시각 개선) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -344,11 +352,10 @@
             const div = document.createElement('div');
             div.className = 'shape-preview';
             
-            // 터치 이벤트 연결
+            // 터치/마우스 이벤트 연결
             div.addEventListener('touchstart', (e) => handleTouchStart(e, i), {passive: false});
             div.addEventListener('touchmove', (e) => handleTouchMove(e), {passive: false});
             div.addEventListener('touchend', (e) => handleTouchEnd(e), {passive: false});
-            // 마우스 이벤트 연결 (PC 테스트용)
             div.addEventListener('mousedown', (e) => handleTouchStart(e, i));
 
             for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
@@ -362,31 +369,46 @@
     }
 
     function handleTouchStart(e, idx) {
-        if(e.cancelable) e.preventDefault(); // 스크롤 방지
+        if(e.cancelable) e.preventDefault();
         isDragging = true;
         dragShapeIndex = idx;
         const s = trayShapes[idx];
 
-        // 드래그 헬퍼(따라다니는 블록) 생성
+        // 헬퍼 생성 (v4.1: 5x5 격자 제거, 최소 크기로 최적화)
         const helper = document.getElementById('drag-helper');
         helper.innerHTML = "";
-        // 헬퍼 크기 설정 (그리드 셀 크기 참고)
+        
         const cellRect = document.querySelector('.cell').getBoundingClientRect();
         const cellSize = cellRect.width;
-        helper.style.width = (cellSize * 5 + 4) + 'px'; // 5칸 + 간격
-        helper.style.height = (cellSize * 5 + 4) + 'px';
-        
-        for(let r=0; r<5; r++) for(let c=0; c<5; c++) {
-            const cell = document.createElement('div');
-            const isPart = s.some(p=>p[0]===r&&p[1]===c);
-            cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
-            helper.appendChild(cell);
+
+        // 블록의 실제 바운딩 박스 계산
+        let minR=5, maxR=-1, minC=5, maxC=-1;
+        s.forEach(p => {
+            minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
+            minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
+        });
+        const rows = maxR - minR + 1;
+        const cols = maxC - minC + 1;
+
+        helper.style.display = "grid";
+        helper.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
+        helper.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+        helper.style.gap = "1px";
+        helper.style.width = (cols * cellSize + (cols-1)) + 'px';
+        helper.style.height = (rows * cellSize + (rows-1)) + 'px';
+
+        // 해당 부분만 채우기 (좌표 정규화)
+        for(let r=minR; r<=maxR; r++) {
+            for(let c=minC; c<=maxC; c++) {
+                const cell = document.createElement('div');
+                const isPart = s.some(p=>p[0]===r&&p[1]===c);
+                // 빈 칸은 투명, 채워진 칸만 표시
+                cell.className = isPart ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
+                helper.appendChild(cell);
+            }
         }
         
-        helper.style.display = "grid";
         moveHelper(e);
-        
-        // 트레이의 원본은 흐릿하게
         e.currentTarget.classList.add('dragging');
         playSound('click');
     }
@@ -402,15 +424,11 @@
         if(!isDragging) return;
         isDragging = false;
         document.getElementById('drag-helper').style.display = "none";
-        
-        // 원본 스타일 복구
         document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging'));
 
         if(ghostIndices.length > 0) {
-            // 설치 확정
             placeBlock(ghostIndices, trayShapes[dragShapeIndex]);
         } else {
-            // 설치 실패 (원위치)
             clearGhost();
         }
         ghostIndices = [];
@@ -421,32 +439,47 @@
         const helper = document.getElementById('drag-helper');
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        // 터치 좌표보다 80px 위로 올려서 손가락에 가리지 않게 (시각적 Helper만)
         helper.style.left = cx + 'px';
-        helper.style.top = cy + 'px';
+        helper.style.top = (cy - 80) + 'px'; 
     }
 
     function updateGhost(e) {
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // 손가락 위치에 있는 요소 확인
-        // 손가락보다 살짝 위(-50px)를 기준으로 잡아야 정확함 (Helper Offset 고려)
-        const el = document.elementFromPoint(cx, cy - 50); 
-        
+        // 중요: 손가락보다 위(-80px)를 '타겟 지점'으로 인식하도록 보정
+        const touchOffset = 80; 
+        const targetY = cy - touchOffset;
+
+        // 헬퍼 잠깐 숨기고 아래 요소 찾기
+        const helper = document.getElementById('drag-helper');
+        helper.style.display = 'none'; 
+        const el = document.elementFromPoint(cx, targetY);
+        helper.style.display = 'grid';
+
         clearGhost();
 
-        if(!el || !el.classList.contains('cell')) return; // 그리드 밖임
+        if(!el || !el.classList.contains('cell')) return;
 
         const targetIdx = parseInt(el.id.split('-')[1]);
         const r = Math.floor(targetIdx / 8);
         const c = targetIdx % 8;
         const s = trayShapes[dragShapeIndex];
         
-        // 유효성 검사
+        // 블록 바운딩 박스 중심 보정 (드래그하는 모양의 중앙을 기준으로)
+        let minR=5, minC=5;
+        s.forEach(p => { minR = Math.min(minR, p[0]); minC = Math.min(minC, p[1]); });
+        // 사용자가 잡은 곳을 블록의 (minR, minC)로 가정하고 계산
+        
         let indices = [];
-        const isValid = s.every(p => {
-            const nr = r + p[0];
-            const nc = c + p[1];
+        const fit = s.every(p => {
+            // p[0], p[1]은 원래 5x5 기준 좌표. 
+            // 이를 현재 타겟 셀(r,c)에 맞추기 위해 정규화
+            const relR = p[0] - minR;
+            const relC = p[1] - minC;
+            const nr = r + relR; 
+            const nc = c + relC;
             if(nr < 8 && nc < 8 && grid[nr*8 + nc] === 0) {
                 indices.push(nr*8 + nc);
                 return true;
@@ -454,7 +487,7 @@
             return false;
         });
 
-        if(isValid) {
+        if(fit) {
             ghostIndices = indices;
             indices.forEach(idx => {
                 const cell = document.getElementById('cell-' + idx);
@@ -482,12 +515,11 @@
         renderTray();
         checkLines();
 
-        // 4개 모두 썼는지 확인
         if(trayShapes.every(v => v === null)) startQuiz();
         else checkGameOver();
     }
 
-    // --- (이하 checkLines, checkGameOver 등 기존 로직 유지) ---
+    // --- 게임 효과 및 유틸리티 ---
     function triggerShake() {
         const g = document.getElementById('grid');
         g.classList.remove('shaking'); void g.offsetWidth; g.classList.add('shaking');
@@ -594,7 +626,7 @@
     }
     function confirmExit() { if(confirm("홈으로 나갈까요?")) showScreen('home'); }
     window.onload = updateScores;
-    // PC 드래그 지원 (마우스)
+    // PC 드래그 지원
     window.addEventListener('mousemove', (e) => { if(isDragging) { moveHelper(e); updateGhost(e); } });
     window.addEventListener('mouseup', (e) => { if(isDragging) handleTouchEnd(e); });
 </script>
