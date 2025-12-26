@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v3.3</title>
+    <title>암기 퍼즐 PRO v3.4</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -186,10 +186,10 @@
         document.getElementById('q-next').style.display = "none";
     }
 
-    // --- 정답 체크 로직 v3.3 (O/X 앞글자 + 주관식 전체 매칭) ---
+    // --- 정답 체크 로직 v3.4 (이미지 오답 이슈 해결 버전) ---
     function checkQuizAnswer() {
-        const userInput = document.getElementById('q-input').value.trim().toUpperCase();
-        const inputNoSpace = userInput.replace(/\s/g, ""); 
+        const rawInput = document.getElementById('q-input').value.trim();
+        const inputNoSpace = rawInput.replace(/\s/g, "").toUpperCase(); 
         
         const originalAns = sessionQuizzes[curQuiz].a;
         const actualAnsNoSpace = originalAns.replace(/\s/g, "").toUpperCase(); 
@@ -197,12 +197,15 @@
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
 
-        // O, X 한 글자 입력 시 앞글자 매칭 (해설 무시용)
-        if ((inputNoSpace === "O" || inputNoSpace === "X") && actualAnsNoSpace.startsWith(inputNoSpace)) {
-            isCorrect = true;
+        // [판정 1] O/X 한 글자 입력 시: 정답의 '첫 글자'와 대조 (해설 무시)
+        if (inputNoSpace === "O" || inputNoSpace === "X") {
+            if (actualAnsNoSpace.charAt(0) === inputNoSpace) {
+                isCorrect = true;
+            }
         } 
-        // 일반 주관식: 띄어쓰기 제외 전체 일치
-        else if (inputNoSpace === actualAnsNoSpace) {
+        
+        // [판정 2] 일반 주관식: 띄어쓰기 제외하고 전체가 일치해야 함
+        if (!isCorrect && inputNoSpace === actualAnsNoSpace) {
             isCorrect = true;
         }
 
@@ -212,6 +215,7 @@
         } else {
             feedbackEl.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>정답: ${originalAns}</span>`;
         }
+        
         document.getElementById('q-submit').style.display = "none";
         document.getElementById('q-next').style.display = "block";
     }
