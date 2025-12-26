@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>암기 퍼즐 PRO v4.4</title>
+    <title>암기 퍼즐 PRO v4.5</title>
     <style>
         :root { 
             --p: #3498db; --s: #2ecc71; --bg: #f0f2f5; 
@@ -70,9 +70,9 @@
         .cell.filled { background: var(--p); transform: scale(0.95); }
         .cell.bonus-filled { background: var(--bonus); transform: scale(0.95); box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         .cell.clearing { background: var(--s); transform: scale(1.1); filter: brightness(1.2); }
-        /* 고스트 블록 스타일 */
-        .cell.ghost { background: var(--p); opacity: 0.5; transform: scale(0.9); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5); }
-        .cell.ghost-bonus { background: var(--bonus); opacity: 0.5; transform: scale(0.9); }
+        /* 고스트 블록 스타일 (v4.5: 더 선명하게) */
+        .cell.ghost { background: var(--p); opacity: 0.6; transform: scale(0.95); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.8); }
+        .cell.ghost-bonus { background: var(--bonus); opacity: 0.6; transform: scale(0.95); }
 
         #tray { 
             display: flex; justify-content: center; align-items: center; gap: 8px;
@@ -87,17 +87,17 @@
         .preview-cell.filled { background: var(--p); border-radius: 1px; }
         .preview-cell.bonus { background: var(--bonus); border-radius: 1px; }
 
-        /* v4.4 수정: 드래그 헬퍼 (따라다니는 블록) 부활 및 스타일링 */
+        /* 드래그 헬퍼 (따라다니는 블록) */
         #drag-helper {
             position: fixed; pointer-events: none; z-index: 1000;
             display: none; /* JS에서 grid로 변경 */
-            opacity: 0.7; /* 반투명하게 */
+            opacity: 0.8; /* 투명도 조절하여 뒤의 고스트가 보이게 함 */
             transform: translate(-50%, -50%); /* 중심점 기준 */
         }
         #drag-helper .preview-cell { background: transparent; } /* 빈 칸 투명 */
         #drag-helper .preview-cell.filled, 
         #drag-helper .preview-cell.bonus { 
-            box-shadow: 2px 4px 8px rgba(0,0,0,0.3); border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-radius: 4px;
         }
 
         .menu-btn { width: 100%; padding: 16px; margin: 8px 0; border: none; border-radius: 15px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
@@ -252,8 +252,8 @@
     let isDragging = false;
     let dragShapeIndex = null;
     let ghostIndices = []; 
-    // v4.4 수정: 터치 오프셋을 80px로 줄여서 더 직관적으로 변경
-    const DRAG_OFFSET = 80; 
+    // v4.5 수정: 최적의 오프셋 (손가락 바로 위 75px)
+    const TOUCH_OFFSET = 75; 
 
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -267,7 +267,7 @@
         document.getElementById('score').innerText = score;
     }
 
-    // --- 퀴즈 로직 (v3.9: 피셔-예이츠 + 오답가중치) ---
+    // --- 퀴즈 로직 (v3.9 유지) ---
     function startQuiz() {
         if(vocabulary.length < 1) { refillTray(0); return; }
         curQuiz = 0; quizCorrect = 0;
@@ -306,7 +306,6 @@
         const feedbackEl = document.getElementById('q-feedback');
         let isCorrect = false;
         
-        // 정답 판정 (v3.4: O/X 첫글자, 띄어쓰기 무시)
         if (inputNoSpace === "O" || inputNoSpace === "X") {
             if (actualAnsNoSpace.charAt(0) === inputNoSpace) isCorrect = true;
         } 
@@ -334,8 +333,6 @@
             else { alert("불합격! 2문제 이상 맞춰야 합니다."); startQuiz(); }
         }
     }
-
-    // --- 트레이 리필 (v3.6.1: 4개 강제 사용) ---
     function refillTray(correctCount) {
         trayShapes = [0,1,2].map(() => [...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);
         if(correctCount === 3) {
@@ -346,7 +343,7 @@
         checkGameOver();
     }
 
-    // --- 드래그 앤 드롭 시스템 v4.4 (헬퍼 부활 & 오프셋 최적화) ---
+    // --- 드래그 앤 드롭 시스템 v4.5 (좌표 완벽 동기화) ---
     function renderTray() {
         const trayEl = document.getElementById('tray');
         trayEl.innerHTML = "";
@@ -376,7 +373,6 @@
         dragShapeIndex = idx;
         const s = trayShapes[idx];
 
-        // v4.4 수정: 헬퍼(따라다니는 블록) 생성 및 표시
         const helper = document.getElementById('drag-helper');
         helper.innerHTML = "";
         
@@ -391,7 +387,7 @@
         const rows = maxR - minR + 1;
         const cols = maxC - minC + 1;
 
-        helper.style.display = "grid"; // v4.4: 다시 표시
+        helper.style.display = "grid"; 
         helper.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
         helper.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
         helper.style.gap = "1px";
@@ -422,7 +418,7 @@
     function handleTouchEnd(e) {
         if(!isDragging) return;
         isDragging = false;
-        document.getElementById('drag-helper').style.display = "none"; // v4.4: 헬퍼 숨김
+        document.getElementById('drag-helper').style.display = "none"; 
         document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging'));
 
         if(ghostIndices.length > 0) {
@@ -438,19 +434,19 @@
         const helper = document.getElementById('drag-helper');
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        // v4.4 수정: 헬퍼 위치를 터치 좌표보다 DRAG_OFFSET만큼 위로 설정
+        // v4.5: 헬퍼를 손가락 위 TOUCH_OFFSET 만큼 띄움
         helper.style.left = cx + 'px';
-        helper.style.top = (cy - DRAG_OFFSET) + 'px'; 
+        helper.style.top = (cy - TOUCH_OFFSET) + 'px'; 
     }
 
     function updateGhost(e) {
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // v4.4 수정: 헬퍼와 동일한 위치(DRAG_OFFSET 위)를 타겟으로 설정
-        const targetY = cy - DRAG_OFFSET;
+        // v4.5 핵심: 고스트 탐지 지점 = 헬퍼 위치 (완벽 동기화)
+        // 헬퍼가 떠 있는 그 위치 바로 뒤를 검사함
+        const targetY = cy - TOUCH_OFFSET; 
 
-        // 헬퍼 때문에 요소 인식이 안 되는 것을 방지
         const helper = document.getElementById('drag-helper');
         helper.style.display = 'none'; 
         const el = document.elementFromPoint(cx, targetY);
