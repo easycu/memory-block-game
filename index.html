@@ -3,33 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
-<title>암기 퍼즐 PRO v16.1 (Game Only)</title>
+<title>암기 퍼즐 PRO v16.2 (Restore)</title>
 <style>
     :root {
-        --p: #2e7d32; /* 메인 테마 (녹색) */
-        --s: #66bb6a; /* 서브 테마 */
-        --bg: #e8f5e9; /* 전체 배경 */
-        --grid-bg: #a5d6a7; /* 게임판 배경 */
-        --cell-bg: #c8e6c9; /* 빈칸 색상 */
-        --bonus: #fdd835; /* 보너스 블록 */
-        --text: #1b5e20; /* 글자색 */
-        --danger: #ef5350; /* 경고/오답 */
-        --war: #ff9800; /* 주의/이미지 */
-        --excel: #1565c0; /* 엑셀 */
-        --edit: #7b1fa2; /* 수정 */
+        --p: #2e7d32; --s: #66bb6a; --bg: #e8f5e9;
+        --grid-bg: #a5d6a7; --cell-bg: #c8e6c9; --bonus: #fdd835;
+        --text: #1b5e20; --danger: #ef5350; --war: #ff9800;
+        --excel: #1565c0; --edit: #7b1fa2;
     }
 
     * {
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-        margin: 0; padding: 0;
-        user-select: none; -webkit-user-select: none;
+        box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+        margin: 0; padding: 0; user-select: none; -webkit-user-select: none;
     }
 
-    /* [필수] 아이폰/아이패드 입력 버그 방지 코드 */
+    /* 아이폰 입력 버그 방지 */
     input, textarea, [contenteditable] {
-        user-select: text !important;
-        -webkit-user-select: text !important;
+        user-select: text !important; -webkit-user-select: text !important;
     }
 
     body {
@@ -40,14 +30,12 @@
     }
 
     .screen {
-        display: none; width: 100%; height: 100%;
-        flex-direction: column;
+        display: none; width: 100%; height: 100%; flex-direction: column;
         padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
         overflow-y: auto;
     }
     .screen.active { display: flex; }
 
-    /* 공통 UI 컴포넌트 */
     .header {
         display: flex; justify-content: space-between; align-items: center;
         padding: 10px 0; min-height: 50px; flex-shrink: 0;
@@ -79,7 +67,7 @@
         font-size: 1rem; margin-bottom: 10px; resize: none; font-family: inherit;
     }
 
-    /* 게임 화면 스타일 */
+    /* 게임 관련 */
     #game-area {
         flex: 1; display: flex; flex-direction: column;
         align-items: center; justify-content: center; width: 100%;
@@ -102,7 +90,7 @@
         transition: 0.1s;
     }
     .cell.filled { background: var(--p); box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
-    .cell.ghost { background: var(--p); opacity: 0.4; }
+    .cell.ghost { background: var(--p); opacity: 0.5; transform: scale(0.95); } /* 고스트 효과 강화 */
     .cell.clearing { background: var(--bonus); transform: scale(1.2); transition: 0.3s; }
 
     #tray {
@@ -116,14 +104,13 @@
     .preview-cell { width: 12px; height: 12px; background: #ccc; border-radius: 2px; }
     .preview-cell.filled { background: var(--p); }
 
-    /* 드래그 헬퍼 */
     #drag-helper {
         position: fixed; z-index: 9999; pointer-events: none;
-        display: grid; gap: 2px; transform: translate(-50%, -150%);
+        display: grid; gap: 2px; transform: translate(-50%, -150%); /* 손가락 위로 띄움 */
     }
-    #drag-helper .cell { width: 30px; height: 30px; background: var(--p); opacity: 0.8; border-radius: 4px; }
+    #drag-helper .cell { width: 30px; height: 30px; background: var(--p); opacity: 0.9; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
 
-    /* 퀴즈 팝업 및 이미지 미리보기 */
+    /* 팝업 공통 */
     #quiz-modal, #expl-modal {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.95); z-index: 10000;
@@ -137,13 +124,13 @@
     }
     #q-content img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
     #q-text-display { font-size: 1.3rem; font-weight: bold; text-align: center; margin: 20px 0; }
-    
     #game-ans-input {
         width: 100%; padding: 15px; border: 3px solid var(--s);
         border-radius: 12px; font-size: 1.2rem; min-height: 50px;
         margin: 10px 0; outline: none; background: #fff;
     }
 
+    /* 리스트 및 체크박스 스타일 */
     .img-preview-box {
         width: 100%; min-height: 150px; background: #f5f5f5;
         border: 2px dashed #ccc; border-radius: 12px;
@@ -151,6 +138,17 @@
         overflow: hidden; margin-bottom: 10px; position: relative;
     }
     .img-preview-box img { width: 100%; }
+    
+    .list-item-wrap {
+        display: flex; align-items: center; background: #fff;
+        border-bottom: 1px solid #eee; padding: 10px 0;
+    }
+    .chk-container {
+        padding: 0 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .list-chk {
+        width: 20px; height: 20px; accent-color: var(--danger);
+    }
 
     #toast {
         position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
@@ -186,11 +184,12 @@
 
     <div class="card" style="background:var(--bg);box-shadow:none;border:2px dashed #ccc;padding:15px">
         <h3 style="margin-bottom:10px;font-size:1rem;color:#666">데이터 관리</h3>
-        <div style="display:flex; gap:5px; flex-wrap:wrap">
+        <div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:10px;">
             <button class="btn btn-ghost" onclick="exportData()" style="flex:1;font-size:0.8rem">📤 백업</button>
             <button class="btn btn-ghost" onclick="document.getElementById('file-input').click()" style="flex:1;font-size:0.8rem">📥 복구</button>
-            <button class="btn btn-ghost" onclick="resetStats()" style="flex:1;font-size:0.8rem;color:var(--danger);border-color:var(--danger)">🔄 오답 기록 초기화</button>
+            <button class="btn btn-ghost" onclick="resetStats()" style="flex:1;font-size:0.8rem;color:var(--danger);border-color:var(--danger)">🔄 오답 초기화</button>
         </div>
+        <button id="btn-bulk-del" class="btn btn-d" onclick="deleteSelectedItems()" style="display:none; width:100%; font-size:0.9rem;">🗑️ 선택한 문제 일괄 삭제</button>
         <p style="font-size:0.7rem;color:#888;margin-top:5px">* 이미지 포함 (대용량 주의)</p>
     </div>
 
@@ -260,15 +259,15 @@
         </div>
 
         <div id="tray"></div>
-        <p style="font-size:0.75rem;color:#888;text-align:center;margin-top:10px">블록을 드래그하여 빈칸을 채우면 퀴즈가 시작됩니다.</p>
+        <p style="font-size:0.75rem;color:#888;text-align:center;margin-top:10px">블록을 다 쓰면 퀴즈가 나옵니다.<br>(3문제 다 맞히면 황금블록 획득! 🌟)</p>
     </div>
 </div>
 
 <div id="quiz-modal">
     <div id="quiz-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <h3 style="color:var(--p);margin:0">🧩 퀴즈를 풀어야 블록 고정!</h3>
-            <button onclick="closeQuizModal()" style="background:none;border:none;font-size:1.5rem;color:#999">✕</button>
+            <h3 style="color:var(--p);margin:0">🧩 블록 충전 퀴즈!</h3>
+            <span id="quiz-progress" style="font-weight:bold; color:#666; font-size:0.9rem;">1 / 3</span>
         </div>
 
         <div id="quiz-viewport" style="max-height:40vh; margin-bottom:10px; overflow-y:auto;">
@@ -280,8 +279,8 @@
         <div id="game-feedback" style="text-align:center; font-weight:900; font-size:1.2rem; min-height:30px; margin-top:5px;"></div>
 
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn btn-d" style="flex:1" onclick="giveUpQuiz()">🏳️ 포기</button>
-            <button class="btn btn-p" style="flex:2" onclick="checkGameAnswer()">정답 확인</button>
+            <button class="btn btn-d" style="flex:1" onclick="giveUpQuiz()">🏳️ 포기 (블록 없음)</button>
+            <button class="btn btn-p" style="flex:2" onclick="checkRefillAnswer()">정답 확인</button>
         </div>
     </div>
 </div>
@@ -295,23 +294,20 @@
         <div id="expl-body" style="width:100%;flex:1;overflow-y:auto;text-align:center"></div>
     </div>
     <div style="display:flex;gap:10px;width:100%">
-        <button class="btn btn-p" style="flex:1" onclick="closeExpl(true)">🥺 내 답도 인정 (블록 놓기)</button>
-        <button class="btn btn-ghost" style="flex:1" onclick="closeExpl(false)">닫기 (블록 취소)</button>
+        <button class="btn btn-p" style="flex:1" onclick="closeExpl(true)">🥺 넘어가기 (다음 문제)</button>
     </div>
 </div>
 <script>
-// --- 1. IndexedDB 엔진 (무제한 용량 확보) ---
-const DB_NAME = 'MemoryPuzzlePRO_v16_1'; // Game Only 버전
+// --- 1. IndexedDB 엔진 (무제한 용량) ---
+const DB_NAME = 'MemoryPuzzlePRO_v16_2'; // Restore 버전
 const DB_VER = 1;
 let db;
 
-// DB 초기화 및 연결
 function initDB() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VER);
         req.onupgradeneeded = (e) => {
             db = e.target.result;
-            // 아이템 저장소 생성 (keyPath: id)
             if (!db.objectStoreNames.contains('items')) {
                 db.createObjectStore('items', { keyPath: 'id' });
             }
@@ -319,13 +315,12 @@ function initDB() {
         req.onsuccess = (e) => {
             db = e.target.result;
             resolve(db);
-            loadList(); // 앱 시작 시 저장된 문제 불러오기
+            loadList(); // 앱 시작 시 리스트 로드
         };
         req.onerror = (e) => { reject(e); };
     });
 }
 
-// 데이터 저장/수정 (Put)
 function dbPut(item) {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(['items'], 'readwrite');
@@ -335,7 +330,6 @@ function dbPut(item) {
     });
 }
 
-// 전체 데이터 가져오기 (Get All)
 function dbGetAll() {
     return new Promise((resolve) => {
         const tx = db.transaction(['items'], 'readonly');
@@ -344,7 +338,6 @@ function dbGetAll() {
     });
 }
 
-// 데이터 삭제
 function dbDelete(id) {
     return new Promise((resolve) => {
         const tx = db.transaction(['items'], 'readwrite');
@@ -353,7 +346,6 @@ function dbDelete(id) {
     });
 }
 
-// 데이터 전체 초기화 (덮어쓰기용)
 function dbClear() {
     return new Promise((resolve) => {
         const tx = db.transaction(['items'], 'readwrite');
@@ -362,7 +354,7 @@ function dbClear() {
     });
 }
 
-// --- 2. 이미지 압축 엔진 (HD화질 1280px, 80% 퀄리티) ---
+// --- 2. 이미지 압축 (HD화질 최적화) ---
 function compressImage(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -372,15 +364,14 @@ function compressImage(file) {
             img.src = e.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_SIZE = 1280; // 긴 변 기준 1280px
+                const MAX_SIZE = 1280;
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
                 else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
                 canvas.width = w; canvas.height = h;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
-                // JPEG 80% 화질로 압축
-                resolve(canvas.toDataURL('image/jpeg', 0.8)); 
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
             };
         };
     });
@@ -388,35 +379,36 @@ function compressImage(file) {
 
 // --- 3. 전역 변수 및 화면 관리 ---
 let currentList = [];
-let editingId = null; // 수정 중인 아이템 ID
+let editingId = null;
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioContext = null;
 
-// 앱 실행 시 DB 연결
 window.onload = () => { initDB(); };
 
-// 토스트 메시지 (화면 하단 알림)
 function showToast(msg) {
     const t = document.getElementById('toast');
     t.innerText = msg; t.style.display = 'block';
     setTimeout(() => { t.style.display = 'none' }, 2000);
 }
 
-// 화면 전환 함수
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + id).classList.add('active');
     if (id === 'home') loadList();
 }
+</script> ```
+*(참고: 마지막에 `</script>`가 있어도 다음 파트인 `<script>`가 이어지면 자동으로 연결되니 걱정 마세요!)*
+
+**붙여넣기 완료 후 "다음"이라고 말씀해 주시면, 일괄 삭제 기능이 포함된 [Part 5]를 드리겠습니다.**
+<script>
 // --- 4. 문제 등록/수정/삭제 로직 ---
 
-// 제작 화면 열기
 function openMaker(type, id = null) {
     editingId = id;
     resetForms();
 
     if (id !== null) {
-        // 수정 모드: 기존 데이터 불러오기
+        // 수정 모드
         const item = currentList.find(i => i.id === id);
         if (!item) return;
 
@@ -439,7 +431,7 @@ function openMaker(type, id = null) {
             document.getElementById('btn-im-save').innerText = "수정 완료";
         }
     } else {
-        // 신규 등록 모드
+        // 신규 모드
         document.getElementById('btn-tm-save').innerText = "등록하기";
         document.getElementById('btn-im-save').innerText = "등록하기";
         document.getElementById('excel-area').style.display = 'block';
@@ -447,7 +439,6 @@ function openMaker(type, id = null) {
     showScreen(type === 'text' ? 'text-maker' : 'img-maker');
 }
 
-// 입력 폼 초기화
 function resetForms() {
     document.getElementById('tm-q').value = '';
     document.getElementById('tm-a').value = '';
@@ -464,7 +455,6 @@ function resetForms() {
     document.getElementById('im-desc').value = '';
 }
 
-// 텍스트 문제 저장
 async function saveTextItem() {
     const q = document.getElementById('tm-q').value.trim();
     const a = document.getElementById('tm-a').value.trim();
@@ -484,7 +474,6 @@ async function saveTextItem() {
     showScreen('home');
 }
 
-// 엑셀 일괄 등록
 async function parseExcel() {
     const raw = document.getElementById('excel-input').value.trim();
     if (!raw) return showToast('내용을 입력하세요');
@@ -508,7 +497,6 @@ async function parseExcel() {
     showScreen('home');
 }
 
-// 이미지 처리 핸들러
 async function handleImgInput(input, imgId, placeId) {
     if (input.files && input.files[0]) {
         showToast('이미지 압축 중...');
@@ -521,7 +509,6 @@ async function handleImgInput(input, imgId, placeId) {
     }
 }
 
-// 이미지 문제 저장
 async function saveImgItem() {
     const qImgSrc = document.getElementById('im-q-preview').src;
     const a = document.getElementById('im-a').value.trim();
@@ -551,34 +538,61 @@ async function saveImgItem() {
     showScreen('home');
 }
 
-// 리스트 로딩 (홈 화면 갱신)
+// 리스트 로딩 (일괄 삭제용 체크박스 추가)
 async function loadList() {
     currentList = await dbGetAll();
     document.getElementById('total-count').innerText = `(${currentList.length})`;
     const container = document.getElementById('list-container');
+    
+    // 일괄 삭제 버튼 숨김 초기화
+    document.getElementById('btn-bulk-del').style.display = 'none';
+
     container.innerHTML = currentList.slice().reverse().map(item => {
         let infoHtml = '';
         const wrongBadge = item.wrong > 0 ? `<span style="color:var(--danger);font-size:0.7rem;font-weight:bold;margin-left:5px">🔥오답 ${item.wrong}</span>` : '';
+        
         if (item.type === 'text') {
             infoHtml = `<span class="item-tag tag-txt" style="background:#eee;padding:2px 5px;border-radius:4px;font-size:0.7rem;margin-right:5px">텍스트</span>${wrongBadge}<div class="item-q" style="font-weight:bold;margin-top:5px">${item.q}</div><div class="item-a" style="color:var(--p)">${item.a}</div>`;
         } else {
             infoHtml = `<span class="item-tag tag-img" style="background:#e3f2fd;padding:2px 5px;border-radius:4px;font-size:0.7rem;margin-right:5px">이미지</span>${wrongBadge}<div class="item-q" style="font-weight:bold;margin-top:5px">이미지 문제</div><div class="item-a" style="color:var(--p)">답: ${item.a}</div>`;
         }
+        
         return `
-        <div class="item" style="border-bottom:1px solid #eee; padding:10px 0; display:flex; justify-content:space-between; align-items:center;">
-            <div class="item-info" style="flex:1">${infoHtml}</div>
-            <div class="item-btns" style="display:flex; gap:5px;">
+        <div class="list-item-wrap">
+            <div class="chk-container">
+                <input type="checkbox" class="list-chk" value="${item.id}" onchange="toggleBulkBtn()">
+            </div>
+            <div style="flex:1; padding-left:5px;">${infoHtml}</div>
+            <div class="item-btns" style="display:flex; flex-direction:column; gap:5px; padding-right:10px;">
                 <button class="btn btn-m" style="width:auto;padding:5px 10px;font-size:0.8rem;margin:0" onclick="openMaker('${item.type}', ${item.id})">수정</button>
-                <button class="btn btn-d" style="width:auto;padding:5px 10px;font-size:0.8rem;margin:0" onclick="deleteItem(${item.id})">삭제</button>
             </div>
         </div>`;
     }).join('');
 }
 
-async function deleteItem(id) {
-    if (confirm('삭제하시겠습니까?')) {
-        await dbDelete(id);
-        loadList();
+// 체크박스 상태에 따라 '일괄 삭제' 버튼 표시/숨김
+function toggleBulkBtn() {
+    const chks = document.querySelectorAll('.list-chk:checked');
+    const btn = document.getElementById('btn-bulk-del');
+    if (chks.length > 0) {
+        btn.style.display = 'block';
+        btn.innerText = `🗑️ 선택한 ${chks.length}개 문제 삭제`;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+// 선택한 항목 일괄 삭제
+async function deleteSelectedItems() {
+    const chks = document.querySelectorAll('.list-chk:checked');
+    if (chks.length === 0) return;
+    
+    if (confirm(`선택한 ${chks.length}개의 문제를 정말 삭제하시겠습니까?`)) {
+        for (const chk of chks) {
+            await dbDelete(parseFloat(chk.value)); // ID는 숫자형
+        }
+        await loadList();
+        showToast("삭제 완료");
     }
 }
 
@@ -638,21 +652,23 @@ function processImport(file, isOverwrite) {
     };
     reader.readAsText(file);
 }
-// --- 6. 블록 퍼즐 게임 엔진 (Game Only) ---
+</script>
+<script>
+// --- 6. 블록 퍼즐 게임 엔진 (Restore) ---
 
-// 블록 모양 정의
+// 블록 모양 정의 (매운맛 포함 복구)
 const SHAPES = [
     [[0,0],[0,1],[1,0],[1,1]], // O (네모)
-    [[0,0],[1,0],[2,0],[3,0],[4,0]], // I (5칸)
-    [[0,0],[0,1],[0,2],[0,3],[0,4]], // I (5칸 가로)
-    [[0,0],[1,0],[2,0]], // I (3칸)
+    [[0,0],[1,0],[2,0],[3,0],[4,0]], // I (5칸 세로) - 어려움!
+    [[0,0],[0,1],[0,2],[0,3],[0,4]], // I (5칸 가로) - 어려움!
+    [[0,0],[1,0],[2,0]], // I (3칸 세로)
     [[0,0],[0,1],[0,2]], // I (3칸 가로)
-    [[0,0],[1,0],[2,0],[2,1],[2,2]], // L
+    [[0,0],[1,0],[2,0],[2,1],[2,2]], // L (3x3)
     [[0,0],[0,1],[0,2],[1,2],[2,2]], // L 반대
-    [[0,0],[1,1],[2,2],[3,3]], // 대각선
-    [[0,2],[1,2],[2,0],[2,1],[2,2]], // T
-    [[0,1],[1,0],[1,1],[1,2],[2,1]], // 십자가
-    [[0,0],[0,1],[1,1],[1,2],[2,2]]  // Z
+    [[0,0],[1,1],[2,2],[3,3]], // 대각선 (4칸)
+    [[0,2],[1,2],[2,0],[2,1],[2,2]], // T (3x3)
+    [[0,1],[1,0],[1,1],[1,2],[2,1]], // 십자가 (+) - 어려움!
+    [[0,0],[0,1],[1,1],[1,2],[2,2]]  // Z (3x3)
 ];
 
 let grid = Array(64).fill(0); // 8x8 격자
@@ -662,19 +678,18 @@ let isDragging = false;
 let dragShapeIndex = null;
 let masterR = 0, masterC = 0; // 드래그 중심점
 let pendingBlock = null; // 놓으려고 하는 위치
-const TOUCH_OFFSET = 80; // 손가락에 가려짐 방지 (위로 띄움)
+const TOUCH_OFFSET = 80; // 손가락 가림 방지
 
-// 게임 시작 (집중 공략 모드 반영)
+// 게임 시작
 function startGame() {
     if (currentList.length < 1) return showToast("문제를 먼저 등록해주세요!");
     
-    // 점수 및 격자 초기화
     score = 0;
     grid.fill(0);
     document.getElementById('score').innerText = 0;
     document.getElementById('high-score-game').innerText = highScore;
     
-    // 격자 그리기 (DOM 생성)
+    // 격자 그리기
     const g = document.getElementById('grid');
     g.innerHTML = "";
     for (let i = 0; i < 64; i++) {
@@ -684,35 +699,33 @@ function startGame() {
         g.appendChild(c);
     }
     
-    // 퀴즈 큐 생성 (핵심 알고리즘)
+    // 문제 섞기 (집중 공략 or 랜덤)
     const isFocusMode = document.getElementById('focus-mode').checked;
-    
     if (isFocusMode) {
-        // 🔥 오답 많은 순으로 정렬 (집중 공략)
-        // wrong 값이 없으면 0으로 취급하여 내림차순 정렬
         quizQueue = [...currentList].sort((a, b) => (b.wrong || 0) - (a.wrong || 0));
         showToast("🔥 오답 집중 모드 활성화!");
     } else {
-        // 🎲 랜덤 셔플
         quizQueue = [...currentList].sort(() => Math.random() - 0.5);
         showToast("🎲 랜덤 학습 모드 시작!");
     }
     
     curQuizIdx = 0;
-
-    refillTray(0); // 블록 채우기
-    showScreen('game'); // 화면 전환
+    refillTray(); // 최초 블록 채우기
+    showScreen('game');
 }
 
-// 트레이(블록 보관함) 채우기
-function refillTray(c) {
-    trayShapes = [0, 1, 2].map(() => {
-        // 10% 확률로 1칸짜리 황금 보너스 블록 등장
-        if (Math.random() < 0.1) return { pts: [[0,0]], isBonus: true };
-        return { pts: [...SHAPES[Math.floor(Math.random() * SHAPES.length)]], isBonus: false };
-    });
+// 트레이 채우기 (퀴즈 없이 채움 - 게임 시작 시)
+function refillTray() {
+    trayShapes = [0, 1, 2].map(() => getRandomShape());
     renderTray();
     checkGameOver();
+}
+
+// 블록 랜덤 생성 함수
+function getRandomShape() {
+    // 5% 확률로 1칸짜리 황금 보너스 블록 (위기 탈출용)
+    if (Math.random() < 0.05) return { pts: [[0,0]], isBonus: true };
+    return { pts: [...SHAPES[Math.floor(Math.random() * SHAPES.length)]], isBonus: false };
 }
 
 // 트레이 화면 그리기
@@ -720,15 +733,14 @@ function renderTray() {
     const t = document.getElementById('tray');
     t.innerHTML = "";
     trayShapes.forEach((s, i) => {
-        if (!s) return; // 이미 사용한 블록은 패스
+        if (!s) return;
         const d = document.createElement('div');
         d.className = 'shape-preview';
         
-        // 터치/마우스 이벤트 연결
         d.addEventListener('touchstart', e => handleStart(e, i), { passive: false });
         d.addEventListener('mousedown', e => handleStart(e, i));
         
-        // 블록 크기 계산 및 Grid 설정
+        // 블록 크기 계산
         let minR = 5, minC = 5, maxR = -1, maxC = -1;
         s.pts.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
@@ -750,14 +762,13 @@ function renderTray() {
     });
 }
 
-// --- 드래그 앤 드롭 로직 (모바일/PC 통합) ---
+// --- 쫀득한 조작감 (Magnet Snapping) 로직 ---
 function handleStart(e, i) {
     if (e.cancelable && e.type === 'touchstart') e.preventDefault();
     isDragging = true;
     dragShapeIndex = i;
     const s = trayShapes[i].pts;
     
-    // 중심점 잡기
     let minR = 5, minC = 5, maxR = -1, maxC = -1;
     s.forEach(p => {
         minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
@@ -765,7 +776,6 @@ function handleStart(e, i) {
     });
     masterR = minR; masterC = minC;
 
-    // 드래그 헬퍼(잔상) 생성
     const h = document.getElementById('drag-helper');
     h.innerHTML = "";
     h.style.gridTemplateRows = `repeat(${maxR - minR + 1}, 30px)`;
@@ -784,7 +794,6 @@ function handleStart(e, i) {
     playSound('click');
 }
 
-// 이벤트 리스너 등록
 window.addEventListener('touchmove', handleMove, { passive: false });
 window.addEventListener('mousemove', handleMove);
 window.addEventListener('touchend', handleEnd);
@@ -792,42 +801,51 @@ window.addEventListener('mouseup', handleEnd);
 
 function handleMove(e) {
     if (!isDragging) return;
-    if (e.cancelable) e.preventDefault(); // 스크롤 방지
+    if (e.cancelable) e.preventDefault();
     moveHelper(e);
-    updateGhost(e);
+    
+    // 좌표 기반 마그네틱 스내핑 (v14 방식 복원)
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // 격자판의 위치 정보 획득
+    const gridRect = document.getElementById('grid').getBoundingClientRect();
+    const cellSize = gridRect.width / 8; // 셀 하나 크기 계산
+    
+    // 격자 안에 들어왔는지 확인
+    if (cx >= gridRect.left && cx <= gridRect.right && 
+        cy - TOUCH_OFFSET >= gridRect.top && cy - TOUCH_OFFSET <= gridRect.bottom) {
+        
+        // 마우스 위치를 기준으로 가장 가까운 셀 인덱스 계산 (자석 효과)
+        const relativeX = cx - gridRect.left;
+        const relativeY = (cy - TOUCH_OFFSET) - gridRect.top;
+        
+        const col = Math.floor(relativeX / cellSize);
+        const row = Math.floor(relativeY / cellSize);
+        
+        // 블록의 중심점(masterR, masterC)을 기준으로 배치 시도
+        checkPlacement(row, col);
+    } else {
+        clearGhost();
+    }
 }
 
-// 헬퍼 위치 이동
 function moveHelper(e) {
     const h = document.getElementById('drag-helper');
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
     h.style.left = cx + 'px';
-    h.style.top = (cy - TOUCH_OFFSET) + 'px'; // 손가락 위로 띄우기
+    h.style.top = (cy - TOUCH_OFFSET) + 'px';
 }
 
-// 놓을 위치 미리보기 (Ghost)
-function updateGhost(e) {
-    document.querySelectorAll('.cell.ghost').forEach(c => c.className = 'cell');
-    
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    
-    // 실제 격자 위인지 확인
-    const el = document.elementFromPoint(cx, cy - TOUCH_OFFSET);
-    if (!el || !el.classList.contains('cell') || !el.id.startsWith('cell-')) return;
-    
-    const id = parseInt(el.id.split('-')[1]);
-    const tr = Math.floor(id / 8);
-    const tc = id % 8;
-    
+function checkPlacement(r, c) {
     const s = trayShapes[dragShapeIndex].pts;
     const inds = [];
     
-    // 블록이 격자 안에 다 들어오고, 빈칸인지 검사
+    // 유효성 검사: 격자를 벗어나지 않고, 이미 채워진 칸이 아니어야 함
     const valid = s.every(p => {
-        const nr = tr + (p[0] - masterR);
-        const nc = tc + (p[1] - masterC);
+        const nr = r + (p[0] - masterR);
+        const nc = c + (p[1] - masterC);
         if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && grid[nr * 8 + nc] === 0) {
             inds.push(nr * 8 + nc);
             return true;
@@ -835,84 +853,129 @@ function updateGhost(e) {
         return false;
     });
 
+    // 고스트 그리기
+    document.querySelectorAll('.cell.ghost').forEach(el => el.className = 'cell');
     if (valid) {
         inds.forEach(idx => document.getElementById('cell-' + idx).classList.add('ghost'));
-        pendingBlock = inds; // 유효한 위치 저장
+        pendingBlock = inds;
     } else {
         pendingBlock = null;
     }
+}
+
+function clearGhost() {
+    document.querySelectorAll('.cell.ghost').forEach(c => c.className = 'cell');
+    pendingBlock = null;
 }
 
 function handleEnd(e) {
     if (!isDragging) return;
     isDragging = false;
     document.getElementById('drag-helper').style.display = "none";
-    document.querySelectorAll('.cell.ghost').forEach(c => c.className = 'cell');
+    clearGhost();
     
-    // 유효한 위치에 놓았다면 퀴즈 팝업 열기
-    if (pendingBlock) openQuizModal();
+    // 블록 놓기 성공 시
+    if (pendingBlock) {
+        commitBlock();
+    } else {
+        // 실패 시 제자리로
+        playSound('wrong'); 
+    }
     
     pendingBlock = null;
     dragShapeIndex = null;
 }
-// --- 7. 게임 퀴즈 및 채점 로직 ---
+</script>
+// --- 7. 리필 퀴즈 및 게임 채점 로직 ---
 
-function openQuizModal() {
-    // 퀴즈 큐 관리 (다 풀면 다시 섞어서 무한 반복)
-    if (curQuizIdx >= quizQueue.length) {
+let refillStage = 0; // 현재 퀴즈 단계 (0~2)
+let refillCorrectCnt = 0; // 맞힌 개수
+let perfectBonus = false; // 황금 블록 보너스 여부
+let currentQuizItem = null; // 현재 문제
+
+// 블록 확정 (격자에 기록)
+function commitBlock() {
+    if (!pendingBlock || dragShapeIndex === null) return;
+    
+    playSound('place');
+    pendingBlock.forEach(idx => {
+        grid[idx] = 1; 
+        const c = document.getElementById('cell-' + idx);
+        c.className = 'cell filled';
+        // 보너스 블록이었다면 노란색 유지
+        if (trayShapes[dragShapeIndex].isBonus) c.style.background = 'var(--bonus)';
+    });
+    
+    trayShapes[dragShapeIndex] = null; // 사용한 블록 비우기
+    renderTray();
+    checkLines(); // 줄 삭제 검사
+    
+    // 블록을 다 썼으면 -> 퀴즈 시작! (v14 방식)
+    if (trayShapes.every(s => s === null)) {
+        startRefillQuiz();
+    } else {
+        checkGameOver();
+    }
+}
+
+// 리필 퀴즈 시작 (3문제)
+function startRefillQuiz() {
+    // 퀴즈 큐가 비었거나 부족하면 다시 채움
+    if (!quizQueue || quizQueue.length < 3) {
         const isFocusMode = document.getElementById('focus-mode').checked;
         if (isFocusMode) {
-            // 집중 모드: 변경된 오답 횟수 반영하여 재정렬
             quizQueue = [...currentList].sort((a, b) => (b.wrong || 0) - (a.wrong || 0));
         } else {
-            // 일반 모드: 랜덤 셔플
             quizQueue = [...currentList].sort(() => Math.random() - 0.5);
         }
-        curQuizIdx = 0;
+        // 그래도 없으면 (문제가 3개 미만일 때) 중복 허용
+        if (quizQueue.length < 3 && currentList.length > 0) {
+            while (quizQueue.length < 3) quizQueue.push(currentList[0]);
+        }
     }
-    
-    const item = quizQueue[curQuizIdx];
+
+    refillStage = 0;
+    refillCorrectCnt = 0;
+    perfectBonus = false;
+    showRefillQuestion();
+}
+
+// 문제 표시
+function showRefillQuestion() {
+    // 큐 순환
+    if (curQuizIdx >= quizQueue.length) curQuizIdx = 0;
+    currentQuizItem = quizQueue[curQuizIdx];
+    curQuizIdx++;
+
     const modal = document.getElementById('quiz-modal');
     const content = document.getElementById('game-q-content');
     const input = document.getElementById('game-ans-input');
     const fb = document.getElementById('game-feedback');
-    
+    const progress = document.getElementById('quiz-progress');
+
     // UI 초기화
     content.innerHTML = "";
     input.innerText = "";
     fb.innerText = "";
-    
-    // 문제 표시 (텍스트 or 이미지)
-    if (item.type === 'text') {
-        content.innerHTML = `<div id="q-text-display">${item.q}</div>`;
+    progress.innerText = `${refillStage + 1} / 3`;
+
+    if (currentQuizItem.type === 'text') {
+        content.innerHTML = `<div id="q-text-display">${currentQuizItem.q}</div>`;
     } else {
         const img = document.createElement('img');
-        img.src = item.q;
+        img.src = currentQuizItem.q;
         content.appendChild(img);
     }
-    
+
     modal.style.display = 'flex';
-    input.focus(); // 키보드 자동 띄우기
+    input.focus();
 }
 
-function closeQuizModal() {
-    document.getElementById('quiz-modal').style.display = 'none';
-    pendingBlock = null; // 닫으면 블록 놓기 취소
-}
-
-function giveUpQuiz() {
-    closeQuizModal();
-    showToast("블록 놓기가 취소되었습니다.");
-}
-
-// 정답 확인 함수
-async function checkGameAnswer() {
+// 정답 확인
+async function checkRefillAnswer() {
     const userAns = document.getElementById('game-ans-input').innerText.trim().toUpperCase().replace(/\s/g,'');
-    const item = quizQueue[curQuizIdx];
-    // 복수 정답(콤마) 처리
-    const answers = item.a.toUpperCase().split(',').map(s=>s.trim().replace(/\s/g,''));
+    const answers = currentQuizItem.a.toUpperCase().split(',').map(s=>s.trim().replace(/\s/g,''));
     
-    // 정답 판정 (O/X 유연하게 처리)
     const isCorrect = answers.some(ans => {
         if((ans==='O'||ans==='X') && (userAns==='ㅇ'||userAns==='O')) return ans==='O';
         if((ans==='O'||ans==='X') && (userAns==='ㄴ'||userAns==='X')) return ans==='X';
@@ -922,75 +985,104 @@ async function checkGameAnswer() {
     const fb = document.getElementById('game-feedback');
     
     if (isCorrect) {
-        // 정답!
         fb.innerText = "정답! ⭕";
         fb.style.color = "var(--p)";
         playSound('correct');
+        refillCorrectCnt++;
         
-        // 정답 시 오답 카운트 차감 (복습 효과)
-        if (item.wrong > 0) item.wrong--;
-        await dbPut(item); // DB 업데이트
+        if (currentQuizItem.wrong > 0) currentQuizItem.wrong--; // 복습 성공 시 오답 차감
+        await dbPut(currentQuizItem);
 
         setTimeout(() => {
-            document.getElementById('quiz-modal').style.display = 'none';
-            commitBlock(); // 블록 고정
-            curQuizIdx++;
+            nextRefillStage();
         }, 800);
     } else {
-        // 오답!
         fb.innerText = "오답! ❌";
         fb.style.color = "var(--danger)";
         playSound('wrong');
         
-        // 오답 시 카운트 증가 (집중 공략 대상)
-        item.wrong = (item.wrong || 0) + 1;
-        await dbPut(item); // DB 업데이트
+        currentQuizItem.wrong = (currentQuizItem.wrong || 0) + 1; // 오답 카운트 증가
+        await dbPut(currentQuizItem);
 
         setTimeout(() => {
             document.getElementById('quiz-modal').style.display = 'none';
-            showExpl(item); // 해설 팝업
+            showExpl(currentQuizItem); // 해설 보여주기
         }, 800);
     }
 }
 
-// 엔터키로 정답 제출
+// 다음 단계로 이동
+function nextRefillStage() {
+    refillStage++;
+    if (refillStage < 3) {
+        showRefillQuestion(); // 다음 문제
+    } else {
+        // 3문제 종료
+        document.getElementById('quiz-modal').style.display = 'none';
+        
+        let msg = `${refillCorrectCnt}문제 정답!`;
+        if (refillCorrectCnt === 3) {
+            perfectBonus = true; // 3문제 다 맞히면 보너스 활성화
+            msg += " 🌟황금 블록 획득!🌟";
+            playSound('correct');
+        }
+        showToast(msg);
+        
+        // ★ [중요] 여기서 리필 함수를 호출합니다.
+        // Part 6의 refillTray를 덮어쓰기 위해 아래에 재정의합니다.
+        refillTrayWithBonus(); 
+    }
+}
+
+// 보너스를 적용한 리필 함수 (Part 6의 함수 대체용)
+function refillTrayWithBonus() {
+    trayShapes = [0, 1, 2].map((_, i) => {
+        // 퍼펙트 보너스면 가운데(1번 인덱스)에 1x1 황금블록 확정 지급
+        if (perfectBonus && i === 1) {
+            return { pts: [[0,0]], isBonus: true };
+        }
+        return getRandomShape(); // Part 6의 함수 사용
+    });
+    
+    perfectBonus = false; // 보너스 사용 완료
+    renderTray(); // 화면 갱신
+    checkGameOver(); // 게임오버 체크
+}
+
+// 엔터키 처리
 document.getElementById('game-ans-input').addEventListener('keydown', function(e){
     if(e.key === 'Enter'){
         e.preventDefault();
-        checkGameAnswer();
+        checkRefillAnswer();
     }
 });
 
-// 블록 확정 (격자에 기록)
-function commitBlock() {
-    if (!pendingBlock || dragShapeIndex === null) return;
-    
-    playSound('place');
-    pendingBlock.forEach(idx => {
-        grid[idx] = 1; // 논리적 채움
-        const c = document.getElementById('cell-' + idx);
-        c.className = 'cell filled';
-        // 보너스 블록 색상 적용
-        if (trayShapes[dragShapeIndex].isBonus) c.style.background = 'var(--bonus)';
-    });
-    
-    trayShapes[dragShapeIndex] = null; // 사용한 블록 제거
-    renderTray();
-    checkLines(); // 줄 삭제 검사
-    
-    // 블록 다 쓰면 리필, 아니면 게임오버 검사
-    if (trayShapes.every(s => s === null)) refillTray();
-    else checkGameOver();
+// 포기 버튼 (오답 처리)
+function giveUpQuiz() {
+    // 포기하면 틀린 것으로 간주하고 해설을 보여줌
+    document.getElementById('game-feedback').innerText = "포기... ❌";
+    document.getElementById('game-feedback').style.color = "var(--danger)";
+    setTimeout(() => {
+        document.getElementById('quiz-modal').style.display = 'none';
+        showExpl(currentQuizItem);
+    }, 500);
 }
 
-// 줄 삭제 검사 (가로/세로)
+// 해설 팝업 닫기 (다음 문제로)
+function closeExpl(isNext) {
+    document.getElementById('expl-modal').style.display = 'none';
+    if (isNext) {
+        // 해설 보고 '넘어가기' 누르면 다음 단계로
+        nextRefillStage();
+    }
+}
+
+// 줄 삭제 검사
 function checkLines() {
     let lines = [];
-    // 가로 검사
     for (let r = 0; r < 8; r++) {
         if (grid.slice(r * 8, r * 8 + 8).every(v => v === 1)) lines.push({type:'r', idx:r});
     }
-    // 세로 검사
     for (let c = 0; c < 8; c++) {
         let col = [];
         for (let r = 0; r < 8; r++) col.push(grid[r * 8 + c]);
@@ -1007,11 +1099,9 @@ function checkLines() {
             }
         });
         
-        // 점수 계산 (콤보 보너스)
         score += (lines.length * 10) + (lines.length * lines.length * 5);
         document.getElementById('score').innerText = score;
         
-        // 최고 점수 갱신
         if (score > highScore) {
             highScore = score;
             localStorage.setItem('puzzleBest', highScore);
@@ -1020,22 +1110,19 @@ function checkLines() {
     }
 }
 
-// 줄 삭제 애니메이션
 function animateClear(idx) {
     grid[idx] = 0;
     const c = document.getElementById('cell-' + idx);
-    c.classList.add('clearing'); // 펑 터지는 효과
+    c.classList.add('clearing');
     setTimeout(() => {
         c.className = 'cell';
         c.style.background = '';
     }, 300);
 }
 
-// 게임 오버 검사
 function checkGameOver() {
     const ok = trayShapes.some(s => {
         if (!s) return false;
-        // 남은 블록 중 하나라도 놓을 곳이 있는지 전수 조사
         for (let i = 0; i < 64; i++) {
             const r = Math.floor(i / 8);
             const c = i % 8;
@@ -1049,7 +1136,6 @@ function checkGameOver() {
         return false;
     });
 
-    // 놓을 곳이 없고, 블록도 다 쓴 게 아니라면 게임 오버
     if (!ok && !trayShapes.every(v => v === null)) {
         showToast(`게임 오버! 최종 점수: ${score}`);
         setTimeout(() => showScreen('home'), 3000);
@@ -1057,10 +1143,10 @@ function checkGameOver() {
 }
 
 function confirmExit() {
-    if (confirm("게임을 종료하고 홈으로 갈까요? (진행 상황은 저장되지 않습니다)")) showScreen('home');
+    if (confirm("게임을 종료하고 홈으로 갈까요? (진행 상황은 초기화됩니다)")) showScreen('home');
 }
 
-// 오답 해설 모달 표시
+// 오답 해설 표시
 function showExpl(item) {
     const modal = document.getElementById('expl-modal');
     const ans = document.getElementById('expl-ans');
@@ -1085,19 +1171,6 @@ function showExpl(item) {
     modal.style.display = 'flex';
 }
 
-async function closeExpl(isOverride) {
-    document.getElementById('expl-modal').style.display = 'none';
-    if (isOverride) {
-        // '내 답 인정' 시 패널티 복구 후 블록 고정
-        const item = quizQueue[curQuizIdx];
-        item.wrong = Math.max(0, (item.wrong || 1) - 2); 
-        await dbPut(item);
-        commitBlock();
-        curQuizIdx++;
-    }
-}
-
-// 효과음 재생 (Web Audio API)
 function playSound(type) {
     if (!audioContext) audioContext = new AudioCtx();
     if (audioContext.state === 'suspended') audioContext.resume();
@@ -1108,34 +1181,34 @@ function playSound(type) {
     
     const t = audioContext.currentTime;
     
-    if (type === 'click') { // 블록 집기
+    if (type === 'click') {
         osc.frequency.setValueAtTime(400, t);
         osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.start(t); osc.stop(t + 0.1);
-    } else if (type === 'place') { // 블록 놓기
+    } else if (type === 'place') {
         osc.frequency.setValueAtTime(200, t);
         osc.frequency.linearRampToValueAtTime(50, t + 0.1);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.linearRampToValueAtTime(0, t + 0.1);
         osc.type = 'triangle';
         osc.start(t); osc.stop(t + 0.1);
-    } else if (type === 'clear') { // 줄 삭제
+    } else if (type === 'clear') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(400, t);
         osc.frequency.linearRampToValueAtTime(800, t + 0.2);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.linearRampToValueAtTime(0, t + 0.3);
         osc.start(t); osc.stop(t + 0.3);
-    } else if (type === 'correct') { // 정답
+    } else if (type === 'correct') {
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, t); // 도
-        osc.frequency.linearRampToValueAtTime(880, t + 0.1); // 라
+        osc.frequency.setValueAtTime(523.25, t);
+        osc.frequency.linearRampToValueAtTime(880, t + 0.1);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.linearRampToValueAtTime(0, t + 0.3);
         osc.start(t); osc.stop(t + 0.3);
-    } else if (type === 'wrong') { // 오답
+    } else if (type === 'wrong') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(150, t);
         osc.frequency.linearRampToValueAtTime(100, t + 0.3);
