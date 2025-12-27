@@ -6,17 +6,17 @@
 <title>암기 퍼즐 PRO v16.1 (Game Only)</title>
 <style>
     :root {
-        --p: #2e7d32; /* 메인 */
-        --s: #66bb6a; /* 서브 */
-        --bg: #e8f5e9; /* 배경 */
-        --grid-bg: #a5d6a7;
-        --cell-bg: #c8e6c9;
-        --bonus: #fdd835;
-        --text: #1b5e20;
-        --danger: #ef5350;
-        --war: #ff9800;
-        --excel: #1565c0;
-        --edit: #7b1fa2;
+        --p: #2e7d32; /* 메인 테마 (녹색) */
+        --s: #66bb6a; /* 서브 테마 */
+        --bg: #e8f5e9; /* 전체 배경 */
+        --grid-bg: #a5d6a7; /* 게임판 배경 */
+        --cell-bg: #c8e6c9; /* 빈칸 색상 */
+        --bonus: #fdd835; /* 보너스 블록 */
+        --text: #1b5e20; /* 글자색 */
+        --danger: #ef5350; /* 경고/오답 */
+        --war: #ff9800; /* 주의/이미지 */
+        --excel: #1565c0; /* 엑셀 */
+        --edit: #7b1fa2; /* 수정 */
     }
 
     * {
@@ -26,7 +26,7 @@
         user-select: none; -webkit-user-select: none;
     }
 
-    /* 아이폰 입력 버그 방지 */
+    /* [필수] 아이폰/아이패드 입력 버그 방지 코드 */
     input, textarea, [contenteditable] {
         user-select: text !important;
         -webkit-user-select: text !important;
@@ -47,7 +47,7 @@
     }
     .screen.active { display: flex; }
 
-    /* UI 공통 */
+    /* 공통 UI 컴포넌트 */
     .header {
         display: flex; justify-content: space-between; align-items: center;
         padding: 10px 0; min-height: 50px; flex-shrink: 0;
@@ -79,7 +79,7 @@
         font-size: 1rem; margin-bottom: 10px; resize: none; font-family: inherit;
     }
 
-    /* 게임 스타일 */
+    /* 게임 화면 스타일 */
     #game-area {
         flex: 1; display: flex; flex-direction: column;
         align-items: center; justify-content: center; width: 100%;
@@ -116,14 +116,14 @@
     .preview-cell { width: 12px; height: 12px; background: #ccc; border-radius: 2px; }
     .preview-cell.filled { background: var(--p); }
 
-    /* 드래그 헬퍼 */
+    /* 드래그 헬퍼 (따라다니는 블록) */
     #drag-helper {
         position: fixed; z-index: 9999; pointer-events: none;
         display: grid; gap: 2px; transform: translate(-50%, -150%);
     }
     #drag-helper .cell { width: 30px; height: 30px; background: var(--p); opacity: 0.8; border-radius: 4px; }
 
-    /* 퀴즈 모달 */
+    /* 퀴즈 팝업 및 이미지 미리보기 */
     #quiz-modal {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.95); z-index: 10000;
@@ -138,13 +138,12 @@
     #q-content img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
     #q-text-display { font-size: 1.3rem; font-weight: bold; text-align: center; margin: 20px 0; }
     
-    #ans-input-div {
+    #game-ans-input {
         width: 100%; padding: 15px; border: 3px solid var(--s);
         border-radius: 12px; font-size: 1.2rem; min-height: 50px;
         margin: 10px 0; outline: none; background: #fff;
     }
 
-    /* 이미지 미리보기 */
     .img-preview-box {
         width: 100%; min-height: 150px; background: #f5f5f5;
         border: 2px dashed #ccc; border-radius: 12px;
@@ -170,9 +169,9 @@
     <div class="card" style="border:2px solid var(--p); background:#f1f8e9;">
         <h3 style="margin-bottom:10px; color:var(--p); text-align:center;">🧩 블록 퍼즐 학습</h3>
         
-        <label style="display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:15px; cursor:pointer;">
-            <input type="checkbox" id="focus-mode" style="width:18px; height:18px;">
-            <span style="font-weight:bold; color:var(--danger);">🔥 오답 많은 문제 우선 출제</span>
+        <label style="display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:15px; cursor:pointer; padding:10px; background:rgba(255,255,255,0.5); border-radius:10px;">
+            <input type="checkbox" id="focus-mode" style="width:20px; height:20px;">
+            <span style="font-weight:bold; color:var(--danger); font-size:1rem;">🔥 오답 많은 문제 우선 출제</span>
         </label>
 
         <button class="btn btn-p" onclick="startGame()" style="font-size:1.2rem; padding:20px;">🎮 게임 시작</button>
@@ -301,16 +300,18 @@
     </div>
 </div>
 <script>
-// --- 1. IndexedDB 엔진 (무제한 용량) ---
+// --- 1. IndexedDB 엔진 (무제한 용량 확보) ---
 const DB_NAME = 'MemoryPuzzlePRO_v16_1'; // Game Only 버전
 const DB_VER = 1;
 let db;
 
+// DB 초기화 및 연결
 function initDB() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VER);
         req.onupgradeneeded = (e) => {
             db = e.target.result;
+            // 아이템 저장소 생성 (keyPath: id)
             if (!db.objectStoreNames.contains('items')) {
                 db.createObjectStore('items', { keyPath: 'id' });
             }
@@ -318,12 +319,13 @@ function initDB() {
         req.onsuccess = (e) => {
             db = e.target.result;
             resolve(db);
-            loadList(); // 앱 시작 시 리스트 로드
+            loadList(); // 앱 시작 시 저장된 문제 불러오기
         };
         req.onerror = (e) => { reject(e); };
     });
 }
 
+// 데이터 저장/수정 (Put)
 function dbPut(item) {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(['items'], 'readwrite');
@@ -333,6 +335,7 @@ function dbPut(item) {
     });
 }
 
+// 전체 데이터 가져오기 (Get All)
 function dbGetAll() {
     return new Promise((resolve) => {
         const tx = db.transaction(['items'], 'readonly');
@@ -341,6 +344,7 @@ function dbGetAll() {
     });
 }
 
+// 데이터 삭제
 function dbDelete(id) {
     return new Promise((resolve) => {
         const tx = db.transaction(['items'], 'readwrite');
@@ -349,6 +353,7 @@ function dbDelete(id) {
     });
 }
 
+// 데이터 전체 초기화 (덮어쓰기용)
 function dbClear() {
     return new Promise((resolve) => {
         const tx = db.transaction(['items'], 'readwrite');
@@ -357,7 +362,7 @@ function dbClear() {
     });
 }
 
-// --- 2. 이미지 압축 (HD화질 최적화) ---
+// --- 2. 이미지 압축 엔진 (HD화질 1280px, 80% 퀄리티) ---
 function compressImage(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -367,14 +372,15 @@ function compressImage(file) {
             img.src = e.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_SIZE = 1280;
+                const MAX_SIZE = 1280; // 긴 변 기준 1280px
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
                 else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
                 canvas.width = w; canvas.height = h;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', 0.8));
+                // JPEG 80% 화질로 압축
+                resolve(canvas.toDataURL('image/jpeg', 0.8)); 
             };
         };
     });
@@ -382,33 +388,35 @@ function compressImage(file) {
 
 // --- 3. 전역 변수 및 화면 관리 ---
 let currentList = [];
-let editingId = null;
-
-// 오디오 컨텍스트 (게임 사운드용)
+let editingId = null; // 수정 중인 아이템 ID
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioContext = null;
 
+// 앱 실행 시 DB 연결
 window.onload = () => { initDB(); };
 
+// 토스트 메시지 (화면 하단 알림)
 function showToast(msg) {
     const t = document.getElementById('toast');
     t.innerText = msg; t.style.display = 'block';
     setTimeout(() => { t.style.display = 'none' }, 2000);
 }
 
+// 화면 전환 함수
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + id).classList.add('active');
     if (id === 'home') loadList();
 }
+// --- 4. 문제 등록/수정/삭제 로직 ---
 
-// --- 4. 문제 등록/수정 ---
+// 제작 화면 열기
 function openMaker(type, id = null) {
     editingId = id;
     resetForms();
 
     if (id !== null) {
-        // 수정 모드
+        // 수정 모드: 기존 데이터 불러오기
         const item = currentList.find(i => i.id === id);
         if (!item) return;
 
@@ -431,7 +439,7 @@ function openMaker(type, id = null) {
             document.getElementById('btn-im-save').innerText = "수정 완료";
         }
     } else {
-        // 신규 모드
+        // 신규 등록 모드
         document.getElementById('btn-tm-save').innerText = "등록하기";
         document.getElementById('btn-im-save').innerText = "등록하기";
         document.getElementById('excel-area').style.display = 'block';
@@ -439,6 +447,7 @@ function openMaker(type, id = null) {
     showScreen(type === 'text' ? 'text-maker' : 'img-maker');
 }
 
+// 입력 폼 초기화
 function resetForms() {
     document.getElementById('tm-q').value = '';
     document.getElementById('tm-a').value = '';
@@ -455,6 +464,7 @@ function resetForms() {
     document.getElementById('im-desc').value = '';
 }
 
+// 텍스트 문제 저장
 async function saveTextItem() {
     const q = document.getElementById('tm-q').value.trim();
     const a = document.getElementById('tm-a').value.trim();
@@ -474,6 +484,7 @@ async function saveTextItem() {
     showScreen('home');
 }
 
+// 엑셀 일괄 등록
 async function parseExcel() {
     const raw = document.getElementById('excel-input').value.trim();
     if (!raw) return showToast('내용을 입력하세요');
@@ -497,6 +508,7 @@ async function parseExcel() {
     showScreen('home');
 }
 
+// 이미지 처리 핸들러
 async function handleImgInput(input, imgId, placeId) {
     if (input.files && input.files[0]) {
         showToast('이미지 압축 중...');
@@ -509,6 +521,7 @@ async function handleImgInput(input, imgId, placeId) {
     }
 }
 
+// 이미지 문제 저장
 async function saveImgItem() {
     const qImgSrc = document.getElementById('im-q-preview').src;
     const a = document.getElementById('im-a').value.trim();
@@ -538,6 +551,7 @@ async function saveImgItem() {
     showScreen('home');
 }
 
+// 리스트 로딩 (홈 화면 갱신)
 async function loadList() {
     currentList = await dbGetAll();
     document.getElementById('total-count').innerText = `(${currentList.length})`;
@@ -546,14 +560,14 @@ async function loadList() {
         let infoHtml = '';
         const wrongBadge = item.wrong > 0 ? `<span style="color:var(--danger);font-size:0.7rem;font-weight:bold;margin-left:5px">🔥오답 ${item.wrong}</span>` : '';
         if (item.type === 'text') {
-            infoHtml = `<span class="item-tag tag-txt">텍스트</span>${wrongBadge}<div class="item-q">${item.q}</div><div class="item-a">${item.a}</div>`;
+            infoHtml = `<span class="item-tag tag-txt" style="background:#eee;padding:2px 5px;border-radius:4px;font-size:0.7rem;margin-right:5px">텍스트</span>${wrongBadge}<div class="item-q" style="font-weight:bold;margin-top:5px">${item.q}</div><div class="item-a" style="color:var(--p)">${item.a}</div>`;
         } else {
-            infoHtml = `<span class="item-tag tag-img">이미지</span>${wrongBadge}<div class="item-q">이미지 문제</div><div class="item-a">답: ${item.a}</div>`;
+            infoHtml = `<span class="item-tag tag-img" style="background:#e3f2fd;padding:2px 5px;border-radius:4px;font-size:0.7rem;margin-right:5px">이미지</span>${wrongBadge}<div class="item-q" style="font-weight:bold;margin-top:5px">이미지 문제</div><div class="item-a" style="color:var(--p)">답: ${item.a}</div>`;
         }
         return `
-        <div class="item">
-            <div class="item-info">${infoHtml}</div>
-            <div class="item-btns">
+        <div class="item" style="border-bottom:1px solid #eee; padding:10px 0; display:flex; justify-content:space-between; align-items:center;">
+            <div class="item-info" style="flex:1">${infoHtml}</div>
+            <div class="item-btns" style="display:flex; gap:5px;">
                 <button class="btn btn-m" style="width:auto;padding:5px 10px;font-size:0.8rem;margin:0" onclick="openMaker('${item.type}', ${item.id})">수정</button>
                 <button class="btn btn-d" style="width:auto;padding:5px 10px;font-size:0.8rem;margin:0" onclick="deleteItem(${item.id})">삭제</button>
             </div>
@@ -569,16 +583,16 @@ async function deleteItem(id) {
 }
 
 async function resetStats() {
-    if (!confirm('모든 오답 기록(🔥)을 초기화할까요?')) return;
+    if (!confirm('모든 문제의 오답 기록(🔥)을 0으로 초기화할까요?')) return;
     for (const item of currentList) {
         item.wrong = 0;
         await dbPut(item);
     }
     loadList();
-    showToast('초기화 완료');
+    showToast('오답 기록 초기화 완료');
 }
 
-// --- 5. 백업/복구 ---
+// --- 5. 백업/복구 기능 ---
 async function exportData() {
     const list = await dbGetAll();
     if (list.length === 0) return showToast('데이터가 없습니다');
@@ -595,10 +609,10 @@ async function exportData() {
 function importData(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm("⚠️ 경고: [확인] 누르면 '덮어쓰기'(기존 삭제), [취소] 누르면 '합치기' 됩니다.")) {
-        processImport(file, false);
+    if (!confirm("⚠️ 주의: [확인]을 누르면 기존 데이터를 모두 지우고 '덮어쓰기' 합니다.\n[취소]를 누르면 기존 데이터 뒤에 '추가(합치기)' 합니다.")) {
+        processImport(file, false); // 취소 -> 합치기
     } else {
-        processImport(file, true);
+        processImport(file, true); // 확인 -> 덮어쓰기
     }
     e.target.value = '';
 }
@@ -619,48 +633,48 @@ function processImport(file, isOverwrite) {
             await loadList();
             showToast('복구 완료!');
         } catch (err) {
-            alert('잘못된 파일입니다.');
+            alert('잘못된 백업 파일입니다.');
         }
     };
     reader.readAsText(file);
 }
-<script>
 // --- 6. 블록 퍼즐 게임 엔진 (Game Only) ---
 
+// 블록 모양 정의
 const SHAPES = [
-    [[0,0],[0,1],[1,0],[1,1]], // O
-    [[0,0],[1,0],[2,0],[3,0],[4,0]], // I (5)
-    [[0,0],[0,1],[0,2],[0,3],[0,4]], // I (5)
-    [[0,0],[1,0],[2,0]], // I (3)
-    [[0,0],[0,1],[0,2]], // I (3)
+    [[0,0],[0,1],[1,0],[1,1]], // O (네모)
+    [[0,0],[1,0],[2,0],[3,0],[4,0]], // I (5칸)
+    [[0,0],[0,1],[0,2],[0,3],[0,4]], // I (5칸 가로)
+    [[0,0],[1,0],[2,0]], // I (3칸)
+    [[0,0],[0,1],[0,2]], // I (3칸 가로)
     [[0,0],[1,0],[2,0],[2,1],[2,2]], // L
-    [[0,0],[0,1],[0,2],[1,2],[2,2]], // L reverse
-    [[0,0],[1,1],[2,2],[3,3]], // Diagonal
+    [[0,0],[0,1],[0,2],[1,2],[2,2]], // L 반대
+    [[0,0],[1,1],[2,2],[3,3]], // 대각선
     [[0,2],[1,2],[2,0],[2,1],[2,2]], // T
-    [[0,1],[1,0],[1,1],[1,2],[2,1]], // Cross
+    [[0,1],[1,0],[1,1],[1,2],[2,1]], // 십자가
     [[0,0],[0,1],[1,1],[1,2],[2,2]]  // Z
 ];
 
-let grid = Array(64).fill(0);
-let trayShapes = [];
+let grid = Array(64).fill(0); // 8x8 격자
+let trayShapes = []; // 대기 중인 블록 3개
 let highScore = localStorage.getItem('puzzleBest') || 0;
 let isDragging = false;
 let dragShapeIndex = null;
-let masterR = 0, masterC = 0;
-let pendingBlock = null; 
-const TOUCH_OFFSET = 80;
+let masterR = 0, masterC = 0; // 드래그 중심점
+let pendingBlock = null; // 놓으려고 하는 위치
+const TOUCH_OFFSET = 80; // 손가락에 가려짐 방지 (위로 띄움)
 
 // 게임 시작 (집중 공략 모드 반영)
 function startGame() {
     if (currentList.length < 1) return showToast("문제를 먼저 등록해주세요!");
     
-    // 점수 초기화
+    // 점수 및 격자 초기화
     score = 0;
     grid.fill(0);
     document.getElementById('score').innerText = 0;
     document.getElementById('high-score-game').innerText = highScore;
     
-    // 격자 그리기
+    // 격자 그리기 (DOM 생성)
     const g = document.getElementById('grid');
     g.innerHTML = "";
     for (let i = 0; i < 64; i++) {
@@ -674,24 +688,26 @@ function startGame() {
     const isFocusMode = document.getElementById('focus-mode').checked;
     
     if (isFocusMode) {
-        // 오답 많은 순으로 정렬 (집중 공략)
+        // 🔥 오답 많은 순으로 정렬 (집중 공략)
+        // wrong 값이 없으면 0으로 취급하여 내림차순 정렬
         quizQueue = [...currentList].sort((a, b) => (b.wrong || 0) - (a.wrong || 0));
         showToast("🔥 오답 집중 모드 활성화!");
     } else {
-        // 랜덤 셔플
+        // 🎲 랜덤 셔플
         quizQueue = [...currentList].sort(() => Math.random() - 0.5);
         showToast("🎲 랜덤 학습 모드 시작!");
     }
     
-    // 큐가 비지 않도록 무한 루프 처리는 openQuizModal에서 함
     curQuizIdx = 0;
 
-    refillTray(0);
-    showScreen('game');
+    refillTray(0); // 블록 채우기
+    showScreen('game'); // 화면 전환
 }
 
+// 트레이(블록 보관함) 채우기
 function refillTray(c) {
     trayShapes = [0, 1, 2].map(() => {
+        // 10% 확률로 1칸짜리 황금 보너스 블록 등장
         if (Math.random() < 0.1) return { pts: [[0,0]], isBonus: true };
         return { pts: [...SHAPES[Math.floor(Math.random() * SHAPES.length)]], isBonus: false };
     });
@@ -699,16 +715,20 @@ function refillTray(c) {
     checkGameOver();
 }
 
+// 트레이 화면 그리기
 function renderTray() {
     const t = document.getElementById('tray');
     t.innerHTML = "";
     trayShapes.forEach((s, i) => {
-        if (!s) return;
+        if (!s) return; // 이미 사용한 블록은 패스
         const d = document.createElement('div');
         d.className = 'shape-preview';
+        
+        // 터치/마우스 이벤트 연결
         d.addEventListener('touchstart', e => handleStart(e, i), { passive: false });
         d.addEventListener('mousedown', e => handleStart(e, i));
         
+        // 블록 크기 계산 및 Grid 설정
         let minR = 5, minC = 5, maxR = -1, maxC = -1;
         s.pts.forEach(p => {
             minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
@@ -730,13 +750,14 @@ function renderTray() {
     });
 }
 
-// --- 드래그 로직 ---
+// --- 드래그 앤 드롭 로직 (모바일/PC 통합) ---
 function handleStart(e, i) {
     if (e.cancelable && e.type === 'touchstart') e.preventDefault();
     isDragging = true;
     dragShapeIndex = i;
     const s = trayShapes[i].pts;
     
+    // 중심점 잡기
     let minR = 5, minC = 5, maxR = -1, maxC = -1;
     s.forEach(p => {
         minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
@@ -744,6 +765,7 @@ function handleStart(e, i) {
     });
     masterR = minR; masterC = minC;
 
+    // 드래그 헬퍼(잔상) 생성
     const h = document.getElementById('drag-helper');
     h.innerHTML = "";
     h.style.gridTemplateRows = `repeat(${maxR - minR + 1}, 30px)`;
@@ -762,6 +784,7 @@ function handleStart(e, i) {
     playSound('click');
 }
 
+// 이벤트 리스너 등록
 window.addEventListener('touchmove', handleMove, { passive: false });
 window.addEventListener('mousemove', handleMove);
 window.addEventListener('touchend', handleEnd);
@@ -769,23 +792,28 @@ window.addEventListener('mouseup', handleEnd);
 
 function handleMove(e) {
     if (!isDragging) return;
-    if (e.cancelable) e.preventDefault();
+    if (e.cancelable) e.preventDefault(); // 스크롤 방지
     moveHelper(e);
     updateGhost(e);
 }
 
+// 헬퍼 위치 이동
 function moveHelper(e) {
     const h = document.getElementById('drag-helper');
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
     h.style.left = cx + 'px';
-    h.style.top = (cy - TOUCH_OFFSET) + 'px';
+    h.style.top = (cy - TOUCH_OFFSET) + 'px'; // 손가락 위로 띄우기
 }
 
+// 놓을 위치 미리보기 (Ghost)
 function updateGhost(e) {
     document.querySelectorAll('.cell.ghost').forEach(c => c.className = 'cell');
+    
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // 실제 격자 위인지 확인
     const el = document.elementFromPoint(cx, cy - TOUCH_OFFSET);
     if (!el || !el.classList.contains('cell') || !el.id.startsWith('cell-')) return;
     
@@ -795,6 +823,8 @@ function updateGhost(e) {
     
     const s = trayShapes[dragShapeIndex].pts;
     const inds = [];
+    
+    // 블록이 격자 안에 다 들어오고, 빈칸인지 검사
     const valid = s.every(p => {
         const nr = tr + (p[0] - masterR);
         const nc = tc + (p[1] - masterC);
@@ -807,7 +837,7 @@ function updateGhost(e) {
 
     if (valid) {
         inds.forEach(idx => document.getElementById('cell-' + idx).classList.add('ghost'));
-        pendingBlock = inds;
+        pendingBlock = inds; // 유효한 위치 저장
     } else {
         pendingBlock = null;
     }
@@ -819,20 +849,23 @@ function handleEnd(e) {
     document.getElementById('drag-helper').style.display = "none";
     document.querySelectorAll('.cell.ghost').forEach(c => c.className = 'cell');
     
+    // 유효한 위치에 놓았다면 퀴즈 팝업 열기
     if (pendingBlock) openQuizModal();
+    
     pendingBlock = null;
     dragShapeIndex = null;
 }
+// --- 7. 게임 퀴즈 및 채점 로직 ---
 
-// --- 7. 게임 퀴즈 로직 (ID 충돌 해결됨) ---
 function openQuizModal() {
-    // 퀴즈 큐 순환 (다 풀면 다시 섞어서 무한 반복)
+    // 퀴즈 큐 관리 (다 풀면 다시 섞어서 무한 반복)
     if (curQuizIdx >= quizQueue.length) {
         const isFocusMode = document.getElementById('focus-mode').checked;
         if (isFocusMode) {
-             // 집중 모드여도 다 풀었으면 다시 오답순 정렬 (그 사이 DB 업데이트 됐을 수 있으므로)
+            // 집중 모드: 변경된 오답 횟수 반영하여 재정렬
             quizQueue = [...currentList].sort((a, b) => (b.wrong || 0) - (a.wrong || 0));
         } else {
+            // 일반 모드: 랜덤 셔플
             quizQueue = [...currentList].sort(() => Math.random() - 0.5);
         }
         curQuizIdx = 0;
@@ -844,10 +877,12 @@ function openQuizModal() {
     const input = document.getElementById('game-ans-input');
     const fb = document.getElementById('game-feedback');
     
+    // UI 초기화
     content.innerHTML = "";
     input.innerText = "";
     fb.innerText = "";
     
+    // 문제 표시 (텍스트 or 이미지)
     if (item.type === 'text') {
         content.innerHTML = `<div id="q-text-display">${item.q}</div>`;
     } else {
@@ -857,12 +892,12 @@ function openQuizModal() {
     }
     
     modal.style.display = 'flex';
-    input.focus();
+    input.focus(); // 키보드 자동 띄우기
 }
 
 function closeQuizModal() {
     document.getElementById('quiz-modal').style.display = 'none';
-    pendingBlock = null;
+    pendingBlock = null; // 닫으면 블록 놓기 취소
 }
 
 function giveUpQuiz() {
@@ -870,12 +905,14 @@ function giveUpQuiz() {
     showToast("블록 놓기가 취소되었습니다.");
 }
 
+// 정답 확인 함수
 async function checkGameAnswer() {
-    // 게임 전용 입력창 ID 사용
     const userAns = document.getElementById('game-ans-input').innerText.trim().toUpperCase().replace(/\s/g,'');
     const item = quizQueue[curQuizIdx];
+    // 복수 정답(콤마) 처리
     const answers = item.a.toUpperCase().split(',').map(s=>s.trim().replace(/\s/g,''));
     
+    // 정답 판정 (O/X 유연하게 처리)
     const isCorrect = answers.some(ans => {
         if((ans==='O'||ans==='X') && (userAns==='ㅇ'||userAns==='O')) return ans==='O';
         if((ans==='O'||ans==='X') && (userAns==='ㄴ'||userAns==='X')) return ans==='X';
@@ -885,36 +922,38 @@ async function checkGameAnswer() {
     const fb = document.getElementById('game-feedback');
     
     if (isCorrect) {
+        // 정답!
         fb.innerText = "정답! ⭕";
         fb.style.color = "var(--p)";
         playSound('correct');
         
         // 정답 시 오답 카운트 차감 (복습 효과)
         if (item.wrong > 0) item.wrong--;
-        await dbPut(item);
+        await dbPut(item); // DB 업데이트
 
         setTimeout(() => {
             document.getElementById('quiz-modal').style.display = 'none';
-            commitBlock(); // 블록 확정
+            commitBlock(); // 블록 고정
             curQuizIdx++;
         }, 800);
     } else {
+        // 오답!
         fb.innerText = "오답! ❌";
         fb.style.color = "var(--danger)";
         playSound('wrong');
         
         // 오답 시 카운트 증가 (집중 공략 대상)
         item.wrong = (item.wrong || 0) + 1;
-        await dbPut(item);
+        await dbPut(item); // DB 업데이트
 
         setTimeout(() => {
             document.getElementById('quiz-modal').style.display = 'none';
-            showExpl(item);
+            showExpl(item); // 해설 팝업
         }, 800);
     }
 }
 
-// 엔터키 제출 (게임용)
+// 엔터키로 정답 제출
 document.getElementById('game-ans-input').addEventListener('keydown', function(e){
     if(e.key === 'Enter'){
         e.preventDefault();
@@ -922,30 +961,36 @@ document.getElementById('game-ans-input').addEventListener('keydown', function(e
     }
 });
 
+// 블록 확정 (격자에 기록)
 function commitBlock() {
     if (!pendingBlock || dragShapeIndex === null) return;
     
     playSound('place');
     pendingBlock.forEach(idx => {
-        grid[idx] = 1;
+        grid[idx] = 1; // 논리적 채움
         const c = document.getElementById('cell-' + idx);
         c.className = 'cell filled';
+        // 보너스 블록 색상 적용
         if (trayShapes[dragShapeIndex].isBonus) c.style.background = 'var(--bonus)';
     });
     
-    trayShapes[dragShapeIndex] = null;
+    trayShapes[dragShapeIndex] = null; // 사용한 블록 제거
     renderTray();
-    checkLines();
+    checkLines(); // 줄 삭제 검사
     
+    // 블록 다 쓰면 리필, 아니면 게임오버 검사
     if (trayShapes.every(s => s === null)) refillTray();
     else checkGameOver();
 }
 
+// 줄 삭제 검사 (가로/세로)
 function checkLines() {
     let lines = [];
+    // 가로 검사
     for (let r = 0; r < 8; r++) {
         if (grid.slice(r * 8, r * 8 + 8).every(v => v === 1)) lines.push({type:'r', idx:r});
     }
+    // 세로 검사
     for (let c = 0; c < 8; c++) {
         let col = [];
         for (let r = 0; r < 8; r++) col.push(grid[r * 8 + c]);
@@ -954,9 +999,7 @@ function checkLines() {
     
     if (lines.length > 0) {
         playSound('clear');
-        let bonus = 0;
         lines.forEach(l => {
-            bonus += 10;
             if (l.type === 'r') {
                 for (let i = 0; i < 8; i++) animateClear(l.idx * 8 + i);
             } else {
@@ -964,9 +1007,11 @@ function checkLines() {
             }
         });
         
+        // 점수 계산 (콤보 보너스)
         score += (lines.length * 10) + (lines.length * lines.length * 5);
         document.getElementById('score').innerText = score;
         
+        // 최고 점수 갱신
         if (score > highScore) {
             highScore = score;
             localStorage.setItem('puzzleBest', highScore);
@@ -975,19 +1020,22 @@ function checkLines() {
     }
 }
 
+// 줄 삭제 애니메이션
 function animateClear(idx) {
     grid[idx] = 0;
     const c = document.getElementById('cell-' + idx);
-    c.classList.add('clearing');
+    c.classList.add('clearing'); // 펑 터지는 효과
     setTimeout(() => {
         c.className = 'cell';
         c.style.background = '';
     }, 300);
 }
 
+// 게임 오버 검사
 function checkGameOver() {
     const ok = trayShapes.some(s => {
         if (!s) return false;
+        // 남은 블록 중 하나라도 놓을 곳이 있는지 전수 조사
         for (let i = 0; i < 64; i++) {
             const r = Math.floor(i / 8);
             const c = i % 8;
@@ -1001,17 +1049,18 @@ function checkGameOver() {
         return false;
     });
 
+    // 놓을 곳이 없고, 블록도 다 쓴 게 아니라면 게임 오버
     if (!ok && !trayShapes.every(v => v === null)) {
-        showToast(`게임 오버! 점수: ${score}`);
+        showToast(`게임 오버! 최종 점수: ${score}`);
         setTimeout(() => showScreen('home'), 3000);
     }
 }
 
 function confirmExit() {
-    if (confirm("게임을 종료하고 홈으로 갈까요?")) showScreen('home');
+    if (confirm("게임을 종료하고 홈으로 갈까요? (진행 상황은 저장되지 않습니다)")) showScreen('home');
 }
 
-// 오답 해설 모달 처리 (게임용)
+// 오답 해설 모달 표시
 function showExpl(item) {
     const modal = document.getElementById('expl-modal');
     const ans = document.getElementById('expl-ans');
@@ -1039,18 +1088,16 @@ function showExpl(item) {
 async function closeExpl(isOverride) {
     document.getElementById('expl-modal').style.display = 'none';
     if (isOverride) {
-        // 내 답 인정 시: 오답 카운트 복구(사실상 -2 효과) 후 블록 확정
+        // '내 답 인정' 시 패널티 복구 후 블록 고정
         const item = quizQueue[curQuizIdx];
         item.wrong = Math.max(0, (item.wrong || 1) - 2); 
         await dbPut(item);
         commitBlock();
         curQuizIdx++;
-    } else {
-        // 그냥 닫으면 블록 취소 (pendingBlock 초기화는 이미 handleEnd에서 됨)
     }
 }
 
-// 사운드 유틸
+// 효과음 재생 (Web Audio API)
 function playSound(type) {
     if (!audioContext) audioContext = new AudioCtx();
     if (audioContext.state === 'suspended') audioContext.resume();
@@ -1061,34 +1108,34 @@ function playSound(type) {
     
     const t = audioContext.currentTime;
     
-    if (type === 'click') {
+    if (type === 'click') { // 블록 집기
         osc.frequency.setValueAtTime(400, t);
         osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.start(t); osc.stop(t + 0.1);
-    } else if (type === 'place') {
+    } else if (type === 'place') { // 블록 놓기
         osc.frequency.setValueAtTime(200, t);
         osc.frequency.linearRampToValueAtTime(50, t + 0.1);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.linearRampToValueAtTime(0, t + 0.1);
         osc.type = 'triangle';
         osc.start(t); osc.stop(t + 0.1);
-    } else if (type === 'clear') {
+    } else if (type === 'clear') { // 줄 삭제
         osc.type = 'sine';
         osc.frequency.setValueAtTime(400, t);
         osc.frequency.linearRampToValueAtTime(800, t + 0.2);
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.linearRampToValueAtTime(0, t + 0.3);
         osc.start(t); osc.stop(t + 0.3);
-    } else if (type === 'correct') {
+    } else if (type === 'correct') { // 정답
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, t);
-        osc.frequency.linearRampToValueAtTime(880, t + 0.1);
+        osc.frequency.setValueAtTime(523.25, t); // 도
+        osc.frequency.linearRampToValueAtTime(880, t + 0.1); // 라
         gain.gain.setValueAtTime(0.1, t);
         gain.gain.linearRampToValueAtTime(0, t + 0.3);
         osc.start(t); osc.stop(t + 0.3);
-    } else if (type === 'wrong') {
+    } else if (type === 'wrong') { // 오답
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(150, t);
         osc.frequency.linearRampToValueAtTime(100, t + 0.3);
