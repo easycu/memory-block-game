@@ -115,7 +115,7 @@ textarea{resize:none}
 <div id="screen-home" class="screen active">
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center">
         <div style="font-size:4.5rem;margin-bottom:15px">🧩</div>
-        <h1 style="color:var(--text)">암기 퍼즐 PRO v7.4</h1>
+        <h1 style="color:var(--text)">암기 퍼즐 PRO v7.5</h1>
         <div style="background:#fff;padding:10px 25px;border-radius:15px;margin:20px 0;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,.05);color:var(--text)">BEST: <span id="high-score-home" style="color:var(--p)">0</span></div>
     </div>
     <div class="home-btns">
@@ -123,7 +123,7 @@ textarea{resize:none}
         <button id="btn-review" class="menu-btn" style="background:#ef5350" onclick="startReviewMode()" disabled>🔥 오답 노트 (0)</button>
         <button id="btn-manage-home" class="menu-btn btn-manage" onclick="showScreen('manage')" disabled>문제 관리</button>
     </div>
-    <div style="font-size:0.7rem;color:#888;margin-top:10px">v7.4 (Review & Smart Crop)</div>
+    <div style="font-size:0.7rem;color:#888;margin-top:10px">v7.5 (iOS Fix & UX Patch)</div>
 </div>
 
 <div id="screen-game" class="screen">
@@ -209,13 +209,19 @@ textarea{resize:none}
 
 <div id="quiz-modal">
     <div class="modal-inner">
-        <h2 id="q-title" style="color:var(--p);margin-bottom:15px">복습 타임!</h2>
-        <div id="q-display-area"></div> <div id="q-text-main"></div>
+        <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+            <button id="q-exit-btn" onclick="quitReview()" style="background:none;border:none;font-size:0.9rem;color:#888;font-weight:bold;cursor:pointer;display:none">🚪 나가기</button>
+            <h2 id="q-title" style="color:var(--p);font-size:1.3rem;margin:0">복습 타임!</h2>
+            <div style="width:50px"></div> </div>
+
+        <div id="q-display-area"></div>
+        <div id="q-text-main"></div>
         <textarea id="q-input" placeholder="정답 입력"></textarea>
         <div id="q-feedback" style="margin-bottom:15px;font-weight:bold;font-size:.9rem;text-align:center"></div>
         <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0;padding:12px">확인</button>
         <button id="q-next" class="menu-btn btn-manage" style="display:none;margin:0;padding:12px" onclick="nextQuestion()">다음</button>
-        <div id="q-desc-area" class="desc-box"></div> </div>
+        <div id="q-desc-area" class="desc-box"></div>
+    </div>
 </div>
 
 <div id="crop-modal">
@@ -444,7 +450,7 @@ function overwriteDB(newData) {
         showToast("복구 완료", 'success');
     };
 }
-// --- [3. 이미지 처리 엔진 (스마트 자르기)] ---
+// --- [3. 이미지 처리 엔진 (스마트 자르기 + iOS 최적화)] ---
 let currentCropBlob = null;
 let currentCropType = null;
 let cropImg = new Image();
@@ -457,17 +463,25 @@ let cropDragMode = 'none'; // 'move' or 'resize'
 let dragStart = {x:0, y:0};
 let initialRect = {x:0, y:0, w:0, h:0};
 
-// 모드 전환
+// [수정됨] 토글 기능 (열려있으면 닫고, 닫혀있으면 엶)
 function toggleAddMode(mode) {
+    const targetId = mode === 'text' ? 'add-text-box' : 'add-image-box';
+    const targetBox = document.getElementById(targetId);
+    const isAlreadyOpen = targetBox.classList.contains('show');
+
+    // 1. 모든 메뉴 닫기 및 스타일 초기화
     document.querySelectorAll('.add-box').forEach(el => el.classList.remove('show'));
     document.querySelectorAll('.mode-select .menu-btn').forEach(btn => btn.style.opacity = '0.5');
-    if (mode === 'text') {
-        document.getElementById('add-text-box').classList.add('show');
-        document.querySelectorAll('.mode-select .menu-btn')[0].style.opacity = '1';
-        clearImage('q'); clearImage('desc');
-    } else {
-        document.getElementById('add-image-box').classList.add('show');
-        document.querySelectorAll('.mode-select .menu-btn')[1].style.opacity = '1';
+
+    // 2. 이전에 닫혀있던 상태라면 해당 메뉴 열기
+    if (!isAlreadyOpen) {
+        targetBox.classList.add('show');
+        if (mode === 'text') {
+            document.querySelectorAll('.mode-select .menu-btn')[0].style.opacity = '1';
+            clearImage('q'); clearImage('desc'); // 이미지 폼 초기화
+        } else {
+            document.querySelectorAll('.mode-select .menu-btn')[1].style.opacity = '1';
+        }
     }
 }
 
@@ -478,26 +492,61 @@ function triggerCamera(type) {
     input.click();
 }
 
+// [수정됨] 아이폰 고해상도 이미지 블랙스크린 방지 (안전 리사이징)
 function handleImageFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) return showToast("이미지 파일만 가능합니다.", 'error');
 
     showLoading(true);
-    const url = URL.createObjectURL(file);
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const tempImg = new Image();
+        tempImg.onload = function() {
+            // iOS Canvas 메모리 제한(Mega-pixel limit) 회피
+            // 긴 변이 2048px을 넘지 않도록 리사이징
+            const MAX_SIZE = 2048; 
+            let width = tempImg.width;
+            let height = tempImg.height;
+
+            if (width > MAX_SIZE || height > MAX_SIZE) {
+                if (width > height) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                } else {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(tempImg, 0, 0, width, height);
+
+            // 안전한 크기로 줄어든 이미지를 자르기 도구 소스로 사용
+            cropImg.src = canvas.toDataURL('image/jpeg', 0.9);
+        }
+        tempImg.onerror = function() {
+            showLoading(false);
+            showToast("이미지 읽기 실패", 'error');
+        }
+        tempImg.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // cropImg 로드 완료 시 (위의 src 설정 후 실행)
     cropImg.onload = function() {
         showLoading(false);
-        // GPU 메모리 보호 (4K 이상 리사이징 경고)
-        if (cropImg.width > 4000 || cropImg.height > 4000) showToast("이미지 최적화 중...", 'info');
         rotationAngle = 0;
         startCropping();
     };
     cropImg.onerror = function() {
         showLoading(false);
-        showToast("이미지 로드 실패", 'error');
-        URL.revokeObjectURL(url);
+        // showToast("이미지 로드 실패", 'error'); // 위에서 처리하므로 생략 가능
     };
-    cropImg.src = url;
     currentCropBlob = file;
 }
 
@@ -505,7 +554,6 @@ function startCropping() {
     document.getElementById('crop-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
     
-    // 초기 영역: 중앙에 배치
     const cw = Math.min(window.innerWidth * 0.6, cropImg.width * 0.6);
     const ch = cw * 0.6;
     cropRect = { x: 50, y: 50, w: cw, h: ch };
@@ -523,7 +571,6 @@ function drawCropCanvas() {
     const maxHeight = window.innerHeight * 0.6;
     let scale = Math.min(maxWidth / w, maxHeight / h);
     
-    // Retina 디스플레이 대응
     const dpr = window.devicePixelRatio || 1;
     cropCanvas.width = w * dpr;
     cropCanvas.height = h * dpr;
@@ -540,17 +587,16 @@ function drawCropCanvas() {
     cropCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
     cropCtx.restore();
 
-    // 3. 어두운 오버레이 (Mask)
+    // 3. 어두운 오버레이
     cropCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     cropCtx.fillRect(0, 0, w, h);
 
-    // 4. 선택 영역 클리어 (밝게) & 테두리
+    // 4. 선택 영역 클리어 & 테두리
     cropCtx.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
     cropCtx.strokeStyle = '#fff';
     cropCtx.lineWidth = 2;
     cropCtx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
     
-    // 밝은 영역 다시 그리기 (Clip)
     cropCtx.save();
     cropCtx.beginPath();
     cropCtx.rect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
@@ -571,7 +617,7 @@ function drawCropCanvas() {
 
 function rotateImage() {
     rotationAngle = (rotationAngle + 90) % 360;
-    cropRect = {x:50, y:50, w:100, h:100}; // 회전 시 초기화
+    cropRect = {x:50, y:50, w:100, h:100};
     drawCropCanvas();
 }
 
@@ -579,7 +625,7 @@ function applyCrop() {
     showLoading(true);
     setTimeout(() => {
         const tempCanvas = document.createElement('canvas');
-        const maxDim = 800; // 최대 해상도 제한 (용량 최적화)
+        const maxDim = 800; // 최종 저장 용량 최적화
         let rw = cropRect.w;
         let rh = cropRect.h;
         if (rw > maxDim || rh > maxDim) {
@@ -591,8 +637,6 @@ function applyCrop() {
         tempCanvas.height = rh;
         const tCtx = tempCanvas.getContext('2d');
         
-        // 화면에 보이는 그대로 추출
-        // 1. 임시 캔버스에 원본을 회전시켜 그림
         const isVertical = rotationAngle % 180 !== 0;
         const w = isVertical ? cropImg.height : cropImg.width;
         const h = isVertical ? cropImg.width : cropImg.height;
@@ -605,7 +649,6 @@ function applyCrop() {
         sCtx.rotate(rotationAngle * Math.PI / 180);
         sCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
         
-        // 2. 크롭 영역 추출
         tCtx.drawImage(sourceCanvas, 
             cropRect.x, cropRect.y, cropRect.w, cropRect.h, 
             0, 0, rw, rh
@@ -633,10 +676,11 @@ function applyCrop() {
 function closeCrop() {
     document.getElementById('crop-modal').style.display = 'none';
     document.body.style.overflow = '';
-    if(cropImg.src) URL.revokeObjectURL(cropImg.src);
+    // 이미 URL revoke 처리는 handleImageFile에서 안하므로(src 재사용 위해), 필요시 여기서 처리
+    // 여기서는 메모리 관리를 위해 유지
 }
 
-// --- [스마트 자르기 터치 이벤트 (이동/리사이즈)] ---
+// 스마트 자르기 포인터 이벤트
 const cropContainer = document.getElementById('crop-canvas-container');
 
 cropContainer.addEventListener('pointerdown', e => {
@@ -644,11 +688,10 @@ cropContainer.addEventListener('pointerdown', e => {
     const scaleX = cropCanvas.width / rect.width / (window.devicePixelRatio||1);
     const scaleY = cropCanvas.height / rect.height / (window.devicePixelRatio||1);
     
-    // 캔버스 내부 좌표
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
     
-    // 핸들 감지 (우하단)
+    // 핸들 감지
     const handleDist = Math.sqrt(Math.pow(x - (cropRect.x + cropRect.w), 2) + Math.pow(y - (cropRect.y + cropRect.h), 2));
     
     if (handleDist < 25 * scaleX) {
@@ -675,14 +718,12 @@ window.addEventListener('pointermove', e => {
     const dx = (e.clientX - dragStart.x) * scaleX;
     const dy = (e.clientY - dragStart.y) * scaleY;
     
-    // 캔버스 실제 크기
     const cw = cropCanvas.width / (window.devicePixelRatio||1);
     const ch = cropCanvas.height / (window.devicePixelRatio||1);
 
     if (cropDragMode === 'move') {
         let nx = initialRect.x + dx;
         let ny = initialRect.y + dy;
-        // 경계 제한
         nx = Math.max(0, Math.min(cw - initialRect.w, nx));
         ny = Math.max(0, Math.min(ch - initialRect.h, ny));
         cropRect.x = nx;
@@ -690,13 +731,11 @@ window.addEventListener('pointermove', e => {
     } else if (cropDragMode === 'resize') {
         let nw = initialRect.w + dx;
         let nh = initialRect.h + dy;
-        // 최소 크기 제한 (50px)
         nw = Math.max(50, Math.min(cw - initialRect.x, nw));
         nh = Math.max(50, Math.min(ch - initialRect.y, nh));
         cropRect.w = nw;
         cropRect.h = nh;
     }
-    
     drawCropCanvas();
 });
 window.addEventListener('pointerup', () => cropDragMode = 'none');
@@ -717,7 +756,7 @@ function clearImage(type) {
     }
 }
 
-// --- [4. 문제 관리 (등록/삭제/목록)] ---
+// --- [4. 문제 관리 로직] ---
 function addTextWord() {
     const q = document.getElementById('new-q').value.trim();
     const a = document.getElementById('new-a').value.trim();
@@ -808,7 +847,7 @@ function exportJSON() {
             const blob = new Blob([JSON.stringify(vocabulary)], {type: "application/json"});
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
-            a.download = `quiz_backup_v7_4.json`;
+            a.download = `quiz_backup_v7_5.json`;
             a.click();
             showToast("백업 완료", 'success');
         } catch(e) { showToast("백업 실패", 'error'); }
@@ -890,7 +929,7 @@ let grid = Array(64).fill(0);
 let trayShapes = [];
 let quizDeck = [];
 let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
-let isReviewMode = false; // 복습 모드 플래그
+let isReviewMode = false;
 let isDragging = false, dragShapeIndex = null, ghostIndices = [];
 let masterR = 0, masterC = 0;
 const TOUCH_OFFSET = 80;
@@ -901,7 +940,7 @@ function showScreen(id) {
     window.scrollTo(0, 0);
     updateScores();
     if (id === 'manage') renderWordList();
-    if (id === 'home') updateReviewBtn(); // 홈으로 올 때 오답노트 버튼 갱신
+    if (id === 'home') updateReviewBtn();
 }
 
 function updateScores() {
@@ -929,11 +968,13 @@ function startQuiz() {
     if (vocabulary.length < 1) { refillTray(3); return; }
     
     isReviewMode = false;
+    document.getElementById('q-exit-btn').style.display = 'none'; // 게임 중엔 나가기 숨김
+    
     curQuiz = 0;
     quizCorrect = 0;
     let f = [];
     
-    // 오답 우선 출제 (게임 중에도 학습 유도)
+    // 오답 우선 출제
     let w = vocabulary.map((v, i) => ({ idx: i, wrong: v.wrongCount })).filter(v => v.wrong > 0).map(v => v.idx);
     if (w.length > 0) f.push(w[Math.floor(Math.random() * w.length)]);
     
@@ -957,12 +998,21 @@ function startReviewMode() {
     if (wrongItems.length === 0) return showToast("틀린 문제가 없습니다!", 'success');
     
     isReviewMode = true;
+    document.getElementById('q-exit-btn').style.display = 'block'; // 나가기 버튼 표시
+    
     curQuiz = 0;
     quizCorrect = 0;
-    sessionQuizzes = shuffle([...wrongItems]); // 틀린 문제 전부 가져오기
+    sessionQuizzes = shuffle([...wrongItems]);
     
     document.getElementById('quiz-modal').style.display = 'flex';
     showQuestion();
+}
+
+// [NEW] 복습 모드 나가기
+function quitReview() {
+    document.getElementById('quiz-modal').style.display = 'none';
+    showScreen('home');
+    updateReviewBtn();
 }
 
 function showQuestion() {
@@ -971,7 +1021,7 @@ function showQuestion() {
     const total = sessionQuizzes.length;
     
     document.getElementById('q-title').innerText = isReviewMode ? 
-        `🔥 오답 복습 (${curQuiz + 1}/${total})` : 
+        `오답 복습 (${curQuiz + 1}/${total})` : 
         `퀴즈 (${curQuiz + 1}/3)`;
     
     const displayArea = document.getElementById('q-display-area');
@@ -1024,17 +1074,16 @@ function checkQuizAnswer() {
         playSound('correct');
         if (qData.wrongCount > 0) {
             qData.wrongCount--;
-            saveToDB(qData); // DB 즉시 반영
+            saveToDB(qData);
         }
         fb.innerHTML = `<span style='color:var(--s)'>정답! ✨<br>${qData.a}</span>`;
     } else {
         playSound('wrong');
         qData.wrongCount = (qData.wrongCount || 0) + 1;
-        saveToDB(qData); // DB 즉시 반영
+        saveToDB(qData);
         fb.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>${qData.a}</span>`;
     }
 
-    // 해설 표시
     if (qData.desc || qData.descImg) {
         descArea.innerHTML = "";
         descArea.style.display = "block";
@@ -1065,12 +1114,10 @@ function nextQuestion() {
         document.getElementById('quiz-modal').style.display = 'none';
         
         if (isReviewMode) {
-            // 복습 모드 종료
             showToast("복습 완료! 수고하셨습니다.", 'success');
             showScreen('home');
-            updateReviewBtn(); // 남은 오답 수 갱신
+            updateReviewBtn();
         } else {
-            // 게임 모드 종료
             if (quizCorrect >= 2) refillTray(quizCorrect);
             else {
                 showToast("불합격! 다시 공부하세요.", 'error');
