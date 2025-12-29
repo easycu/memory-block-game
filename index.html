@@ -2,18 +2,17 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>암기 퍼즐 PRO v7.1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>암기 퍼즐 PRO v7.4</title>
 <style>
-:root{--p:#2e7d32;--s:#66bb6a;--bg:#e8f5e9;--grid-bg:#a5d6a7;--cell-bg:#c8e6c9;--bonus:#fdd835;--excel:#1b5e20;--text:#1b5e20;--danger:#ef5350}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;user-select:none}
-body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);color:var(--text);width:100vw;height:100dvh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none}
-.screen{display:none;width:100%;max-width:450px;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;height:100%;flex-direction:column}
+/* --- [1. 기본 설정 및 변수] --- */
+:root{--p:#2e7d32;--s:#66bb6a;--bg:#e8f5e9;--grid-bg:#a5d6a7;--cell-bg:#c8e6c9;--bonus:#fdd835;--excel:#1b5e20;--text:#1b5e20;--danger:#ef5350;--overlay:rgba(0,0,0,0.6)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;user-select:none;touch-action:manipulation}
+body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);color:var(--text);width:100vw;height:100dvh;display:flex;flex-direction:column;align-items:center;overflow:hidden;touch-action:none;overscroll-behavior:none}
+.screen{display:none;width:100%;max-width:450px;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;height:100%;flex-direction:column;position:relative}
 .active{display:flex}
-@keyframes shake{0%{transform:translate(1px,1px)}10%{transform:translate(-1px,-2px)rotate(-1deg)}50%{transform:translate(-1px,2px)rotate(-1deg)}100%{transform:translate(1px,-2px)rotate(-1deg)}}
-.shaking{animation:shake .5s}
-.float-score{position:absolute;color:var(--bonus);font-weight:900;font-size:1.5rem;pointer-events:none;animation:up 1s ease-out forwards;z-index:100}
-@keyframes up{to{opacity:0;transform:translateY(-50px)scale(1.5)}}
+
+/* --- [2. 게임 화면 UI] --- */
 .header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;min-height:70px;width:100%}
 #grid-container{flex:1;display:flex;align-items:center;justify-content:center;width:100%;position:relative}
 #grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;background:var(--grid-bg);padding:6px;border-radius:12px;width:100%;aspect-ratio:1/1}
@@ -23,57 +22,108 @@ body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);colo
 .cell.clearing{background:var(--s);transform:scale(1.1);filter:brightness(1.2)}
 .cell.ghost{background:var(--p);opacity:.5;transform:scale(.95);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}
 .cell.ghost-bonus{background:var(--bonus);opacity:.6;transform:scale(.95)}
+
+/* 트레이 및 블록 미리보기 */
 #tray{display:flex;justify-content:center;align-items:center;gap:8px;height:110px;margin-bottom:15px;background:#fff;border-radius:20px;padding:10px;width:100%;box-shadow:0 4px 10px rgba(0,0,0,.05)}
 .shape-preview{width:75px;height:75px;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;border-radius:10px;padding:4px;background:#fff}
 .shape-preview.dragging{opacity:0;visibility:hidden}
 .preview-cell{aspect-ratio:1/1}
 .preview-cell.filled{background:var(--p);border-radius:1px}
 .preview-cell.bonus{background:var(--bonus);border-radius:1px}
+
+/* 드래그 헬퍼 (따라다니는 블록) */
 #drag-helper{position:fixed;z-index:1000;display:none;opacity:1;pointer-events:none}
 #drag-helper .preview-cell.filled{background:rgba(46,125,50,0.1);border:3px solid var(--p);border-radius:4px;transform:scale(0.95);box-sizing:border-box}
 #drag-helper .preview-cell.bonus{background:rgba(253,216,53,0.2);border:3px solid var(--bonus);border-radius:4px;transform:scale(0.95);box-sizing:border-box}
-.menu-btn{width:100%;padding:16px;margin:8px 0;border:none;border-radius:15px;color:#fff;font-size:1.1rem;font-weight:bold;cursor:pointer;box-shadow:0 4px 6px rgba(0,0,0,.1)}
+
+/* --- [3. 버튼 및 공통 UI] --- */
+.menu-btn{width:100%;padding:16px;margin:8px 0;border:none;border-radius:15px;color:#fff;font-size:1.1rem;font-weight:bold;cursor:pointer;box-shadow:0 4px 6px rgba(0,0,0,.1);transition:transform 0.1s}
+.menu-btn:active{transform:scale(0.98)}
+.menu-btn:disabled{background:#ccc !important;cursor:not-allowed;box-shadow:none}
 .btn-game{background:var(--p)}
 .btn-manage{background:#8d6e63}
+.btn-blue{background:#1976d2}
+.btn-outline{flex:1;min-width:30%;background:#fff;color:var(--text);border:3px solid #ccc;padding:18px 5px;border-radius:15px;font-size:1.1rem;font-weight:900;text-align:center}
+.btn-append{background:#e8f5e9;border-color:var(--p);color:var(--p)}
 
-/* v7.1 추가: 선택 삭제 UI 스타일 */
+/* --- [4. 관리자 화면 UI] --- */
+.mode-select{display:flex;gap:10px;margin-bottom:15px}
+.add-box{background:#fff;padding:15px;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,.05);display:none}
+.add-box.show{display:block}
+.preview-area{width:100%;min-height:100px;background:#f5f5f5;border:2px dashed #ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;position:relative;overflow:hidden}
+.preview-img{max-width:100%;max-height:200px;object-fit:contain}
+.img-placeholder{color:#888;font-size:0.9rem;text-align:center}
+
+/* 문제 목록 리스트 */
 .bulk-bar{display:flex;justify-content:space-between;align-items:center;background:#eee;padding:10px 15px;border-radius:10px;margin-bottom:10px}
-.word-card{background:#fff;padding:15px;margin-bottom:10px;border-radius:12px;border-left:5px solid var(--p);box-shadow:0 2px 5px rgba(0,0,0,.05);position:relative;white-space:pre-wrap;display:flex;align-items:center}
+.word-card{background:#fff;padding:15px;margin-bottom:10px;border-radius:12px;border-left:5px solid var(--p);box-shadow:0 2px 5px rgba(0,0,0,.05);position:relative;display:flex;align-items:center}
+.word-content{flex:1;overflow:hidden}
+.thumb-img{width:50px;height:50px;object-fit:cover;border-radius:5px;margin-right:10px;border:1px solid #ddd;background:#f0f0f0}
 .chk-box{width:20px;height:20px;margin-right:15px;accent-color:var(--danger)}
-
 .word-list-container{flex:1;overflow-y:auto;margin:15px 0;width:100%}
-#quiz-modal{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(5px)}
-.modal-inner{background:#fff;padding:25px;border-radius:25px;width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center}
-#q-input{width:100%;height:100px;padding:12px;border:2px solid var(--grid-bg);border-radius:12px;font-size:1rem;margin-bottom:15px;resize:none}
-#q-text{width:100%;background:var(--bg);padding:15px;border-radius:12px;margin-bottom:15px;text-align:left;max-height:150px;overflow-y:auto;font-weight:500;white-space:pre-wrap}
-#toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;pointer-events:none;display:flex;justify-content:center;width:100%}
+
+/* --- [5. 모달 UI] --- */
+#quiz-modal, #crop-modal, #img-view-modal{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:9000;backdrop-filter:blur(5px)}
+.modal-inner{background:#fff;padding:25px;border-radius:25px;width:90%;max-width:360px;display:flex;flex-direction:column;align-items:center;max-height:90vh;overflow-y:auto;position:relative}
+
+/* 퀴즈 요소 */
+#q-display-area{width:100%;margin-bottom:15px;display:flex;flex-direction:column;align-items:center}
+.q-img-main{max-width:100%;max-height:250px;object-fit:contain;border-radius:8px;margin-bottom:10px;cursor:zoom-in;border:1px solid #eee}
+#q-text-main{width:100%;background:var(--bg);padding:15px;border-radius:12px;text-align:left;font-weight:500;white-space:pre-wrap;max-height:150px;overflow-y:auto}
+#q-input{width:100%;height:50px;padding:12px;border:2px solid var(--grid-bg);border-radius:12px;font-size:1rem;margin-bottom:10px;resize:none}
+
+/* 자르기(Crop) Canvas */
+#crop-canvas-container{position:relative;width:100%;max-height:60vh;overflow:hidden;background:#333;margin-bottom:10px;touch-action:none}
+#crop-canvas{display:block;margin:0 auto;max-width:100%}
+
+/* 해설 및 기타 */
+.desc-box{margin-top:10px;padding:10px;background:#fff3e0;border-radius:10px;width:100%;display:none;font-size:0.9rem}
+.desc-img{max-width:100%;margin-top:5px;border-radius:5px}
+
+/* 알림 및 애니메이션 */
+#toast-container{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99999;pointer-events:none;display:flex;justify-content:center;width:100%}
 .toast{background:rgba(46,125,50,.95);color:#fff;padding:12px 24px;border-radius:30px;font-weight:bold;opacity:0;transform:translateY(20px);transition:.3s}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.error{background:rgba(231,76,60,.95)}
 .toast.success{background:rgba(67,160,71,.95)}
 .toast.info{background:rgba(30,136,229,.95)}
-.file-ops{display:flex;flex-wrap:wrap;gap:12px;width:100%;margin-top:20px}
-.btn-outline{flex:1;min-width:30%;background:#fff;color:var(--text);border:3px solid #ccc;padding:18px 5px;border-radius:15px;font-size:1.1rem;font-weight:900;text-align:center}
-.btn-append{background:#e8f5e9;border-color:var(--p);color:var(--p)}
+@keyframes shake{0%{transform:translate(1px,1px)}10%{transform:translate(-1px,-2px)rotate(-1deg)}50%{transform:translate(-1px,2px)rotate(-1deg)}100%{transform:translate(1px,-2px)rotate(-1deg)}}
+.shaking{animation:shake .5s}
+.float-score{position:absolute;color:var(--bonus);font-weight:900;font-size:1.5rem;pointer-events:none;animation:up 1s ease-out forwards;z-index:100}
+@keyframes up{to{opacity:0;transform:translateY(-50px)scale(1.5)}}
+
+/* 엑셀 및 입력창 */
 #excel-area{display:none;width:100%;background:#fff;padding:10px;border:2px dashed var(--excel);border-radius:10px;margin-bottom:15px}
 #excel-input{width:100%;height:60px;padding:8px;border:1px solid #ccc;border-radius:5px;font-family:monospace;white-space:pre}
-#new-q, #new-a {flex:1;height:60px;padding:10px;border:1px solid #ddd;border-radius:8px;resize:none}
+textarea{resize:none}
+
+/* 로딩 오버레이 */
+#loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:100000;display:none;justify-content:center;align-items:center;color:#fff;font-weight:bold;flex-direction:column}
+.spinner{border:4px solid rgba(255,255,255,0.3);border-top:4px solid #fff;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:15px}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="loading-text">데이터 처리 중...</div>
+</div>
+
 <div id="drag-helper"></div>
 <div id="toast-container"></div>
 
 <div id="screen-home" class="screen active">
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center">
         <div style="font-size:4.5rem;margin-bottom:15px">🧩</div>
-        <h1 style="color:var(--text)">암기 퍼즐 PRO</h1>
+        <h1 style="color:var(--text)">암기 퍼즐 PRO v7.4</h1>
         <div style="background:#fff;padding:10px 25px;border-radius:15px;margin:20px 0;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,.05);color:var(--text)">BEST: <span id="high-score-home" style="color:var(--p)">0</span></div>
     </div>
     <div class="home-btns">
-        <button class="menu-btn btn-game" onclick="startGame()">게임 시작</button>
-        <button class="menu-btn btn-manage" onclick="showScreen('manage')">문제 관리</button>
+        <button id="btn-start-game" class="menu-btn btn-game" onclick="startGame()" disabled>게임 시작 (로딩 중...)</button>
+        <button id="btn-review" class="menu-btn" style="background:#ef5350" onclick="startReviewMode()" disabled>🔥 오답 노트 (0)</button>
+        <button id="btn-manage-home" class="menu-btn btn-manage" onclick="showScreen('manage')" disabled>문제 관리</button>
     </div>
+    <div style="font-size:0.7rem;color:#888;margin-top:10px">v7.4 (Review & Smart Crop)</div>
 </div>
 
 <div id="screen-game" class="screen">
@@ -91,22 +141,52 @@ body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);colo
 
 <div id="screen-manage" class="screen">
     <h2 style="margin:15px 0;color:var(--text)">문제 관리</h2>
-    <div style="background:#fff;padding:15px;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-        <div style="display:flex;gap:5px"><textarea id="new-q" placeholder="문제"></textarea><textarea id="new-a" placeholder="정답"></textarea></div>
-        <button onclick="addWord()" class="menu-btn btn-game" style="margin:8px 0;padding:12px;font-size:.9rem">추가</button>
-        <button class="menu-btn" style="background:var(--excel);margin:0 0 10px 0;padding:10px;font-size:.9rem" onclick="toggleExcel()">📋 엑셀 붙여넣기</button>
+    
+    <div class="mode-select">
+        <button class="menu-btn btn-game" style="margin:0;padding:10px;font-size:0.9rem" onclick="toggleAddMode('text')">📝 텍스트 문제</button>
+        <button class="menu-btn btn-blue" style="margin:0;padding:10px;font-size:0.9rem" onclick="toggleAddMode('image')">📷 이미지 문제</button>
+    </div>
+
+    <div id="add-text-box" class="add-box">
+        <div style="display:flex;gap:5px;margin-bottom:5px">
+            <textarea id="new-q" placeholder="문제 (텍스트)" style="flex:1;height:60px;padding:10px;border:1px solid #ddd;border-radius:8px"></textarea>
+            <textarea id="new-a" placeholder="정답" style="flex:1;height:60px;padding:10px;border:1px solid #ddd;border-radius:8px"></textarea>
+        </div>
+        <textarea id="new-desc" placeholder="해설 (선택사항)" style="width:100%;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:5px"></textarea>
+        <button onclick="addTextWord()" class="menu-btn btn-game" style="margin:5px 0;padding:10px">등록</button>
+        
+        <button class="menu-btn" style="background:var(--excel);margin:5px 0;padding:10px;font-size:0.9rem" onclick="toggleExcel()">📋 엑셀 붙여넣기</button>
         <div id="excel-area">
             <p style="font-size:.75rem;color:var(--excel);margin-bottom:5px"><b>사용법:</b> 엑셀 [문제] [정답] 복사 후 붙여넣기</p>
-            <textarea id="excel-input" placeholder="Apple	사과"></textarea>
-            <button class="menu-btn btn-game" style="margin:0;padding:8px;font-size:.8rem" onclick="parseExcel()">일괄 등록</button>
+            <textarea id="excel-input" placeholder="Apple    사과"></textarea>
+            <button class="menu-btn btn-game" style="margin:5px 0;padding:8px;font-size:.8rem" onclick="parseExcel()">일괄 등록</button>
+        </div>
+    </div>
+
+    <div id="add-image-box" class="add-box">
+        <div class="preview-area" id="p-area-q">
+            <div class="img-placeholder">문제 이미지 없음<br>(아래 버튼으로 추가)</div>
+            <button onclick="clearImage('q')" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:25px;height:25px;display:none;z-index:1">X</button>
+            <img id="preview-q-img" class="preview-img" style="display:none">
+        </div>
+        <button class="menu-btn btn-blue" style="margin:0 0 10px 0;padding:10px" onclick="triggerCamera('question')">📷 이미지 촬영/선택</button>
+        
+        <textarea id="img-q-text" placeholder="문제 텍스트 (이미지와 함께 표시하려면 입력)" style="width:100%;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:5px"></textarea>
+        <textarea id="img-a" placeholder="정답 (필수)" style="width:100%;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:5px"></textarea>
+        
+        <div style="border-top:1px dashed #ccc;padding-top:10px;margin-top:5px">
+            <div class="preview-area" id="p-area-desc" style="min-height:60px">
+                <div class="img-placeholder" style="font-size:0.8rem">해설 이미지 없음</div>
+                <button onclick="clearImage('desc')" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;display:none;z-index:1">X</button>
+                <img id="preview-desc-img" class="preview-img" style="display:none">
+            </div>
+            <div style="display:flex;gap:5px">
+                <textarea id="img-desc-text" placeholder="해설 텍스트" style="flex:1;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px"></textarea>
+                <button class="menu-btn btn-manage" style="width:auto;margin:0;padding:10px;font-size:0.8rem" onclick="triggerCamera('explanation')">📷 해설<br>이미지</button>
+            </div>
         </div>
         
-        <div class="file-ops">
-            <button class="btn-outline" onclick="exportJSON()">내보내기</button>
-            <button class="btn-outline" onclick="triggerFile('import')">덮어쓰기</button>
-            <button class="btn-outline btn-append" onclick="triggerFile('append')">합치기</button>
-        </div>
-        <input type="file" id="file-input" style="display:none" onchange="handleFile(event)" accept=".json">
+        <button onclick="addImageWord()" class="menu-btn btn-game" style="margin-top:10px;padding:12px">이미지 문제 등록</button>
     </div>
 
     <div style="margin-top:15px" class="bulk-bar">
@@ -115,128 +195,1121 @@ body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);colo
     </div>
 
     <div class="word-list-container" id="word-list"></div>
-    <button class="menu-btn" style="background:#8d6e63;margin-top:auto" onclick="showScreen('home')">돌아가기</button>
+    
+    <div class="file-ops">
+        <button class="btn-outline" onclick="exportJSON()">내보내기</button>
+        <button class="btn-outline" onclick="triggerFile('import')">덮어쓰기</button>
+        <button class="btn-outline" style="border-color:var(--p);color:var(--p)" onclick="triggerFile('append')">합치기</button>
+    </div>
+    
+    <input type="file" id="json-input" style="display:none" onchange="handleJsonFile(event)" accept=".json">
+    <input type="file" id="camera-input" style="display:none" accept="image/*" onchange="handleImageFile(event)">
+    <button class="menu-btn" style="background:#8d6e63;margin-top:10px" onclick="showScreen('home')">돌아가기</button>
 </div>
 
 <div id="quiz-modal">
     <div class="modal-inner">
         <h2 id="q-title" style="color:var(--p);margin-bottom:15px">복습 타임!</h2>
-        <div id="q-text"></div>
+        <div id="q-display-area"></div> <div id="q-text-main"></div>
         <textarea id="q-input" placeholder="정답 입력"></textarea>
         <div id="q-feedback" style="margin-bottom:15px;font-weight:bold;font-size:.9rem;text-align:center"></div>
         <button id="q-submit" class="menu-btn btn-game" onclick="checkQuizAnswer()" style="margin:0;padding:12px">확인</button>
         <button id="q-next" class="menu-btn btn-manage" style="display:none;margin:0;padding:12px" onclick="nextQuestion()">다음</button>
+        <div id="q-desc-area" class="desc-box"></div> </div>
+</div>
+
+<div id="crop-modal">
+    <div class="modal-inner" style="background:#222;color:#fff;width:100%;height:100%;max-width:none;max-height:none;border-radius:0;justify-content:center">
+        <h3 style="margin-bottom:10px">이미지 자르기</h3>
+        <p style="font-size:0.8rem;color:#ccc;margin-bottom:10px">중앙: 이동 / 모서리(🔴): 크기 조절</p>
+        <div id="crop-canvas-container">
+            <canvas id="crop-canvas"></canvas>
+        </div>
+        <div style="display:flex;gap:10px;width:100%;max-width:400px;margin-top:10px">
+            <button class="menu-btn" style="background:#555;padding:10px" onclick="rotateImage()">🔄 회전</button>
+            <button class="menu-btn btn-manage" style="padding:10px" onclick="closeCrop()">취소</button>
+            <button class="menu-btn btn-game" style="padding:10px" onclick="applyCrop()">자르기 완료</button>
+        </div>
     </div>
 </div>
+
+<div id="img-view-modal" onclick="closeImgView()">
+    <img id="img-view-target" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:10px">
+    <button style="position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-weight:bold;font-size:1.5rem">×</button>
+</div>
 <script>
-// --- [1. 기본 유틸리티] ---
-function showToast(m,t='normal'){const c=document.getElementById('toast-container'),e=document.createElement('div');e.className=`toast ${t}`;e.innerText=m;c.appendChild(e);void e.offsetWidth;e.classList.add('show');setTimeout(()=>{e.classList.remove('show');setTimeout(()=>e.remove(),300)},2000)}
-const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioContext=null;
-function initAudio(){if(!audioContext)audioContext=new AudioCtx;if(audioContext.state==='suspended')audioContext.resume()}
-const snd={click:t=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.setValueAtTime(600,t);o.frequency.exponentialRampToValueAtTime(300,t+.1);g.gain.setValueAtTime(.1,t);g.gain.exponentialRampToValueAtTime(.01,t+.1);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.1)},place:t=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(50,t+.1);g.gain.setValueAtTime(.2,t);g.gain.exponentialRampToValueAtTime(.01,t+.1);o.type='triangle';o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.15)},clear:t=>{[523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.value=f;g.gain.setValueAtTime(.1,t+i*.05);g.gain.exponentialRampToValueAtTime(.01,t+i*.05+.3);o.connect(g);g.connect(audioContext.destination);o.start(t+i*.05);o.stop(t+i*.05+.3)})},correct:t=>{[523.25,659.25,783.99].forEach((f,i)=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(.1,t+i*.1);g.gain.linearRampToValueAtTime(0,t+i*.1+.4);o.connect(g);g.connect(audioContext.destination);o.start(t+i*.1);o.stop(t+i*.1+.4)})},wrong:t=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sawtooth';o.frequency.setValueAtTime(150,t);o.frequency.linearRampToValueAtTime(100,t+.3);g.gain.setValueAtTime(.1,t);g.gain.linearRampToValueAtTime(0,t+.3);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.3)}};
-function playSound(t){if(audioContext)snd[t](audioContext.currentTime)}
+// --- [1. 전역 변수 및 기본 유틸리티] ---
+let db;
+const DB_NAME = "PuzzleProDB";
+const DB_VERSION = 2; // v7.3/7.4 스키마
+let vocabulary = []; // 메모리상 문제 데이터
+let isDBReady = false;
 
-// --- [2. 게임 데이터 및 로직 (v7.0 원본 유지)] ---
-const SHAPES=[[[0,0],[0,1],[1,0],[1,1]],[[0,0],[1,0],[2,0],[3,0],[4,0]],[[0,0],[0,1],[0,2],[0,3],[0,4]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[2,0],[2,1],[2,2]],[[0,0],[0,1],[0,2],[1,2],[2,2]],[[0,0],[1,1],[2,2],[3,3]],[[0,2],[1,2],[2,0],[2,1],[2,2]],[[0,1],[1,0],[1,1],[1,2],[2,1]],[[0,0],[0,1],[1,1],[1,2],[2,2]],[[0,0],[1,0],[1,1]],[[0,0],[0,1],[1,0]],[[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],[[0,0]]];
-let score=0,highScore=localStorage.getItem('puzzleBest8x8')||0,grid=Array(64).fill(0),trayShapes=[],vocabulary=JSON.parse(localStorage.getItem('myVocab'))||[{q:"시작!",a:"O",wrongCount:0}],fileMode='import',quizDeck=[],isDragging=false,dragShapeIndex=null,ghostIndices=[],masterR=0,masterC=0;
-const TOUCH_OFFSET=60;
+// 토스트 메시지 알림
+function showToast(m, t='normal'){
+    const c = document.getElementById('toast-container');
+    const e = document.createElement('div');
+    e.className = `toast ${t}`;
+    e.innerText = m;
+    c.appendChild(e);
+    c.style.zIndex = "99999";
+    void e.offsetWidth; // 리플로우 강제
+    e.classList.add('show');
+    setTimeout(()=>{
+        e.classList.remove('show');
+        setTimeout(()=>e.remove(), 300);
+    }, 2000);
+}
 
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');window.scrollTo(0,0);updateScores();if(id==='manage')renderWordList()}
-function updateScores(){document.getElementById('high-score-home').innerText=highScore;document.getElementById('high-score-game').innerText=highScore;document.getElementById('score').innerText=score}
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function fillDeck(){quizDeck=[];for(let i=0;i<vocabulary.length;i++)quizDeck.push(i);shuffle(quizDeck)}
+// 로딩 오버레이 제어
+function showLoading(show){
+    document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+}
 
-// 퀴즈 및 블록 리필 로직
-function startQuiz(){if(vocabulary.length<1){refillTray(0);return}curQuiz=0;quizCorrect=0;let f=[];let w=vocabulary.map((v,i)=>({idx:i,wrong:v.wrongCount})).filter(v=>v.wrong>0).map(v=>v.idx);if(w.length>0)f.push(w[Math.floor(Math.random()*w.length)]);while(f.length<3){if(quizDeck.length===0)fillDeck();const n=quizDeck.pop();if(vocabulary[n]&&!f.includes(n))f.push(n)}shuffle(f);sessionQuizzes=f.map(i=>vocabulary[i]);document.getElementById('quiz-modal').style.display='flex';showQuestion()}
-function showQuestion(){const q=sessionQuizzes[curQuiz];document.getElementById('q-title').innerText=`검토 (${curQuiz+1}/3)`;document.getElementById('q-text').innerText=q.q;document.getElementById('q-input').value="";document.getElementById('q-feedback').innerText="";document.getElementById('q-submit').style.display="block";document.getElementById('q-next').style.display="none"}
-function checkQuizAnswer(){const r=document.getElementById('q-input').value.trim(),i=r.replace(/\s/g,"").toUpperCase(),a=sessionQuizzes[curQuiz].a,ra=a.replace(/\s/g,"").toUpperCase(),fb=document.getElementById('q-feedback');let c=(i==="O"||i==="X")?(ra.charAt(0)===i):(i===ra);if(c){quizCorrect++;playSound('correct');if(sessionQuizzes[curQuiz].wrongCount>0)sessionQuizzes[curQuiz].wrongCount--;fb.innerHTML=`<span style='color:var(--s)'>정답! ✨<br>${a}</span>`}else{playSound('wrong');sessionQuizzes[curQuiz].wrongCount=(sessionQuizzes[curQuiz].wrongCount||0)+1;fb.innerHTML=`<span style='color:var(--danger)'>오답! ❌<br>${a}</span>`}localStorage.setItem('myVocab',JSON.stringify(vocabulary));document.getElementById('q-submit').style.display="none";document.getElementById('q-next').style.display="block"}
-function nextQuestion(){curQuiz++;if(curQuiz<3)showQuestion();else{document.getElementById('quiz-modal').style.display='none';if(quizCorrect>=2)refillTray(quizCorrect);else{showToast("불합격!",'error');setTimeout(startQuiz,1000)}}}
-function refillTray(c){trayShapes=[0,1,2].map(()=>[...SHAPES[Math.floor(Math.random()*SHAPES.length)]]);if(c===3){const b=[[0,0]];b.isBonus=true;trayShapes.push(b)}renderTray();checkGameOver()}
+// XSS 방어 (텍스트 위생처리)
+function escapeHtml(text) {
+    if (!text) return text;
+    return text.replace(/[&<>"']/g, function(m) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[m];
+    });
+}
 
-// 드래그 앤 드롭 & 렌더링
-function renderTray(){const t=document.getElementById('tray');t.innerHTML="";trayShapes.forEach((s,i)=>{if(!s)return;const d=document.createElement('div');d.className='shape-preview';d.id=`shape-${i}`;d.addEventListener('touchstart',e=>handleStart(e,i),{passive:false});d.addEventListener('touchmove',handleMove,{passive:false});d.addEventListener('touchend',handleEnd,{passive:false});d.addEventListener('mousedown',e=>handleStart(e,i));for(let r=0;r<5;r++)for(let c=0;c<5;c++){const el=document.createElement('div');el.className=s.some(p=>p[0]===r&&p[1]===c)?(s.isBonus?'preview-cell filled bonus':'preview-cell filled'):'preview-cell';el.dataset.r=r;el.dataset.c=c;d.appendChild(el)}t.appendChild(d)})}
-function handleStart(e,i){if(e.cancelable)e.preventDefault();isDragging=true;dragShapeIndex=i;const s=trayShapes[i],h=document.getElementById('drag-helper');h.innerHTML="";const cs=document.querySelector('.cell').getBoundingClientRect().width;
-let minR=5,minC=5,maxR=-1,maxC=-1;s.forEach(p=>{minR=Math.min(minR,p[0]);maxR=Math.max(maxR,p[0]);minC=Math.min(minC,p[1]);maxC=Math.max(maxC,p[1])});const centerC=(minC+maxC)/2;let minDist=999;s.forEach(p=>{if(p[0]===maxR){const dist=Math.abs(p[1]-centerC);if(dist<minDist){minDist=dist;masterR=p[0];masterC=p[1]}}});
-h.style.display="grid";h.style.gridTemplateRows=`repeat(${maxR-minR+1},${cs}px)`;h.style.gridTemplateColumns=`repeat(${maxC-minC+1},${cs}px)`;h.style.gap="1px";h.style.width=(maxC-minC+1)*cs+(maxC-minC)+'px';h.style.height=(maxR-minR+1)*cs+(maxR-minR)+'px';
-for(let r=minR;r<=maxR;r++)for(let c=minC;c<=maxC;c++){const el=document.createElement('div');const ip=s.some(p=>p[0]===r&&p[1]===c);el.className=ip?(s.isBonus?'preview-cell filled bonus':'preview-cell filled'):'preview-cell';if(!ip)el.style.visibility="hidden";h.appendChild(el)}
-moveHelper(e);e.currentTarget.classList.add('dragging');playSound('click');ghostIndices=[]}
-function handleMove(e){if(!isDragging)return;if(e.cancelable)e.preventDefault();moveHelper(e);updateGhost(e)}
-function handleEnd(e){if(!isDragging)return;isDragging=false;document.getElementById('drag-helper').style.display="none";document.querySelectorAll('.shape-preview').forEach(el=>el.classList.remove('dragging'));if(ghostIndices.length>0)placeBlock(ghostIndices,trayShapes[dragShapeIndex]);else clearGhost();ghostIndices=[];dragShapeIndex=null}
-function moveHelper(e){const h=document.getElementById('drag-helper'),cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY,cs=document.querySelector('.cell').getBoundingClientRect().width,s=trayShapes[dragShapeIndex];let minR=5,minC=5;s.forEach(p=>{minR=Math.min(minR,p[0]);minC=Math.min(minC,p[1])});const relX=(masterC-minC)*cs+(cs/2);const relY=(masterR-minR)*cs+(cs/2);h.style.left=(cx-relX)+'px';h.style.top=(cy-TOUCH_OFFSET-relY)+'px'}
-function updateGhost(e){clearGhost();ghostIndices=[];const cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY,cs=document.querySelector('.cell').getBoundingClientRect().width,h=document.getElementById('drag-helper');h.style.display='none';const el=document.elementFromPoint(cx,cy-TOUCH_OFFSET);h.style.display='grid';if(!el||!el.classList.contains('cell'))return;const id=parseInt(el.id.split('-')[1]),tr=Math.floor(id/8),tc=id%8,s=trayShapes[dragShapeIndex],sr=tr-masterR,sc=tc-masterC,inds=[];const fit=s.every(p=>{const nr=p[0]+sr,nc=p[1]+sc;if(nr>=0&&nr<8&&nc>=0&&nc<8&&grid[nr*8+nc]===0){inds.push(nr*8+nc);return true}return false});if(fit){ghostIndices=inds;inds.forEach(i=>document.getElementById('cell-'+i).classList.add(s.isBonus?'ghost-bonus':'ghost'))}}
-function clearGhost(){document.querySelectorAll('.cell').forEach(c=>{c.classList.remove('ghost');c.classList.remove('ghost-bonus')})}
-function placeBlock(i,s){playSound('place');i.forEach(x=>{grid[x]=1;document.getElementById('cell-'+x).className=s.isBonus?'cell bonus-filled':'cell filled'});trayShapes[dragShapeIndex]=null;renderTray();checkLines();if(trayShapes.every(v=>v===null))startQuiz();else checkGameOver()}
-function checkLines(){let r=[],c=[];for(let i=0;i<8;i++){if(grid.slice(i*8,i*8+8).every(v=>v===1))r.push(i);let l=[];for(let j=0;j<8;j++)l.push(grid[j*8+i]);if(l.every(v=>v===1))c.push(i)}if(r.length+c.length>0){playSound('clear');const g=document.getElementById('grid');g.classList.remove('shaking');void g.offsetWidth;g.classList.add('shaking');const sc=(r.length+c.length)*10*(r.length+c.length);score+=sc;updateScores();const e=document.createElement('div');e.className='float-score';e.innerText=`+${sc}`;document.getElementById('grid-container').appendChild(e);setTimeout(()=>e.remove(),1000);if(score>highScore){highScore=score;localStorage.setItem('puzzleBest8x8',highScore)}}r.forEach(i=>{for(let k=0;k<8;k++)animateClear(i*8+k)});c.forEach(i=>{for(let k=0;k<8;k++)animateClear(k*8+i)})}
-function animateClear(i){grid[i]=0;const e=document.getElementById('cell-'+i);e.classList.add('clearing');setTimeout(()=>e.className='cell',300)}
-function checkGameOver(){const ok=trayShapes.some(s=>{if(!s)return false;for(let i=0;i<64;i++){const r=Math.floor(i/8),c=i%8;if(s.every(p=>{const nr=r+p[0],nc=c+p[1];return nr<8&&nc<8&&grid[nr*8+nc]===0}))return true}return false});if(!ok&&!trayShapes.every(v=>v===null)){showToast(`게임 종료! 점수: ${score}`,'info');setTimeout(()=>showScreen('home'),2000)}}
-function startGame(){initAudio();if(vocabulary.length<1)return showToast("문제를 등록해주세요!",'error');showScreen('game');initGame()}
-function initGame(){score=0;grid.fill(0);updateScores();const g=document.getElementById('grid');g.innerHTML="";for(let i=0;i<64;i++){const c=document.createElement('div');c.className='cell';c.id='cell-'+i;g.appendChild(c)}refillTray(0);fillDeck()}
+// 오디오 시스템 (Web Audio API)
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioContext = null;
+function initAudio(){ if(!audioContext) audioContext = new AudioCtx(); if(audioContext.state === 'suspended') audioContext.resume(); }
+const snd = {
+    click: t=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.setValueAtTime(600,t);o.frequency.exponentialRampToValueAtTime(300,t+.1);g.gain.setValueAtTime(.1,t);g.gain.exponentialRampToValueAtTime(.01,t+.1);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.1)},
+    place: t=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(50,t+.1);g.gain.setValueAtTime(.2,t);g.gain.exponentialRampToValueAtTime(.01,t+.1);o.type='triangle';o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.15)},
+    clear: t=>{[523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.value=f;g.gain.setValueAtTime(.1,t+i*.05);g.gain.exponentialRampToValueAtTime(.01,t+i*.05+.3);o.connect(g);g.connect(audioContext.destination);o.start(t+i*.05);o.stop(t+i*.05+.3)})},
+    correct: t=>{[523.25,659.25,783.99].forEach((f,i)=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(.1,t+i*.1);g.gain.linearRampToValueAtTime(0,t+i*.1+.4);o.connect(g);g.connect(audioContext.destination);o.start(t+i*.1);o.stop(t+i*.1+.4)})},
+    wrong: t=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sawtooth';o.frequency.setValueAtTime(150,t);o.frequency.linearRampToValueAtTime(100,t+.3);g.gain.setValueAtTime(.1,t);g.gain.linearRampToValueAtTime(0,t+.3);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+.3)}
+};
+function playSound(t){ if(audioContext) snd[t](audioContext.currentTime); }
 
-// --- [3. 문제 관리 (v7.1 수정: 일괄 삭제 기능 추가)] ---
-function addWord(){const q=document.getElementById('new-q').value.trim(),a=document.getElementById('new-a').value.trim();if(q&&a){if(isDuplicate(q,a))return showToast("중복!",'error');vocabulary.push({q,a,wrongCount:0});localStorage.setItem('myVocab',JSON.stringify(vocabulary));renderWordList();document.getElementById('new-q').value="";document.getElementById('new-a').value="";showToast("추가됨!",'success');fillDeck()}else showToast("입력하세요",'error')}
-function isDuplicate(q,a){const nQ=q.replace(/\s/g,"").toUpperCase(),nA=a.replace(/\s/g,"").toUpperCase();return vocabulary.some(v=>v.q.replace(/\s/g,"").toUpperCase()===nQ&&v.a.replace(/\s/g,"").toUpperCase()===nA)}
-function toggleExcel(){const e=document.getElementById('excel-area');e.style.display=e.style.display==='none'?'block':'none'}
-function parseExcel(){const r=document.getElementById('excel-input').value;if(!r.trim())return showToast("입력하세요",'error');const rows=r.split('\n');let c=0;rows.forEach(w=>{const s=w.split('\t');if(s.length>=2){const q=s[0].trim(),a=s[1].trim();if(q&&a&&!isDuplicate(q,a)){vocabulary.push({q,a,wrongCount:0});c++}}});localStorage.setItem('myVocab',JSON.stringify(vocabulary));renderWordList();document.getElementById('excel-input').value="";showToast(`${c}개 추가됨`,'success');toggleExcel();fillDeck()}
 
-// [NEW] 렌더링: 체크박스 추가
-function renderWordList(){
-    const list=document.getElementById('word-list');
-    list.innerHTML=vocabulary.map((v,i)=>`
-    <div class="word-card">
-        <input type="checkbox" class="chk-box" value="${i}" onchange="updateBulkBtn()">
-        <div style="flex:1">
-            <b>${v.q}</b><br><small>${v.a}</small>
-            ${v.wrongCount>0?`<span style="color:var(--danger);font-size:0.7rem"><br>🔥복습(${v.wrongCount})</span>`:''}
-        </div>
-    </div>`).reverse().join(''); // 리스트가 역순으로 보이지만 value는 원래 인덱스 유지
+// --- [2. IndexedDB 엔진 (데이터베이스)] ---
+window.onload = function() {
+    initDB();
+    updateScores();
+    window.addEventListener('mouseleave', ()=>{ if(isDragging) handleEnd({preventDefault:()=>{}}); });
+};
+
+function initDB() {
+    showLoading(true);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = function(e) {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('vocab')) {
+            db.createObjectStore('vocab', { keyPath: 'id', autoIncrement: true });
+        }
+    };
+
+    request.onsuccess = function(e) {
+        db = e.target.result;
+        // 구버전(LocalStorage) 마이그레이션
+        const oldData = localStorage.getItem('myVocab');
+        if (oldData) {
+            try {
+                const parsed = JSON.parse(oldData);
+                if (parsed.length > 0) {
+                    migrateData(parsed);
+                    return;
+                }
+            } catch(err) { console.error(err); }
+            localStorage.removeItem('myVocab');
+        }
+        loadVocabulary();
+    };
+
+    request.onerror = function(e) {
+        showLoading(false);
+        showToast("DB 오류 발생! 앱을 다시 켜주세요.", 'error');
+    };
+}
+
+function migrateData(data) {
+    const transaction = db.transaction(['vocab'], 'readwrite');
+    const store = transaction.objectStore('vocab');
+    let cnt = 0;
     
-    // 전체 선택 해제 및 버튼 숨김 초기화
+    data.forEach(item => {
+        item.type = item.type || 'text';
+        delete item.id;
+        store.add(item);
+        cnt++;
+    });
+
+    transaction.oncomplete = function() {
+        localStorage.removeItem('myVocab');
+        showToast(`데이터 최적화 완료 (${cnt}건)`, 'success');
+        loadVocabulary();
+    };
+    
+    transaction.onerror = function() {
+        showLoading(false);
+        showToast("데이터 이사 실패.", 'error');
+    }
+}
+
+function loadVocabulary() {
+    const transaction = db.transaction(['vocab'], 'readonly');
+    const store = transaction.objectStore('vocab');
+    const request = store.getAll();
+
+    request.onsuccess = function() {
+        vocabulary = request.result || [];
+        isDBReady = true;
+        showLoading(false);
+        
+        // 홈 화면 버튼 업데이트
+        const startBtn = document.getElementById('btn-start-game');
+        startBtn.disabled = false;
+        startBtn.innerText = "게임 시작";
+        
+        // 오답 노트 버튼 업데이트
+        updateReviewBtn();
+
+        document.getElementById('btn-manage-home').disabled = false;
+        
+        if(document.getElementById('screen-manage').classList.contains('active')) {
+            renderWordList();
+        }
+    };
+}
+
+// 오답 노트 버튼 상태 갱신
+function updateReviewBtn() {
+    const wrongCnt = vocabulary.filter(v => (v.wrongCount || 0) > 0).length;
+    const revBtn = document.getElementById('btn-review');
+    revBtn.innerText = `🔥 오답 노트 (${wrongCnt})`;
+    revBtn.disabled = wrongCnt === 0;
+    revBtn.style.opacity = wrongCnt > 0 ? '1' : '0.6';
+}
+
+function saveToDB(item, callback) {
+    if(!isDBReady) return;
+    const transaction = db.transaction(['vocab'], 'readwrite');
+    const store = transaction.objectStore('vocab');
+    
+    transaction.onabort = function(e) {
+        if(e.target.error && e.target.error.name === 'QuotaExceededError') {
+            showToast("저장 공간 부족! 문제를 삭제하세요.", 'error');
+        }
+    };
+
+    const req = store.put(item); // add 대신 put 사용 (수정 지원)
+    req.onsuccess = function() {
+        // 메모리 업데이트 없이 loadVocabulary 호출하여 동기화
+        const t = db.transaction(['vocab'], 'readonly');
+        t.objectStore('vocab').getAll().onsuccess = function(e) {
+            vocabulary = e.target.result || [];
+            updateReviewBtn(); // 오답 수 갱신
+            if(callback) callback();
+        }
+    };
+}
+
+function deleteFromDB(ids) {
+    showLoading(true);
+    const transaction = db.transaction(['vocab'], 'readwrite');
+    const store = transaction.objectStore('vocab');
+    
+    ids.forEach(id => {
+        store.delete(id);
+    });
+
+    transaction.oncomplete = function() {
+        loadVocabulary();
+        showToast("삭제 완료", 'success');
+    };
+}
+
+function overwriteDB(newData) {
+    showLoading(true);
+    const transaction = db.transaction(['vocab'], 'readwrite');
+    const store = transaction.objectStore('vocab');
+    
+    store.clear().onsuccess = function() {
+        newData.forEach(item => {
+            delete item.id;
+            store.add(item);
+        });
+        showLoading(false);
+    };
+    
+    transaction.oncomplete = function() {
+        loadVocabulary();
+        showToast("복구 완료", 'success');
+    };
+}
+// --- [3. 이미지 처리 엔진 (스마트 자르기)] ---
+let currentCropBlob = null;
+let currentCropType = null;
+let cropImg = new Image();
+let cropCanvas = document.getElementById('crop-canvas');
+let cropCtx = cropCanvas.getContext('2d');
+let rotationAngle = 0;
+// 자르기 상태 변수
+let cropRect = {x:50, y:50, w:150, h:150};
+let cropDragMode = 'none'; // 'move' or 'resize'
+let dragStart = {x:0, y:0};
+let initialRect = {x:0, y:0, w:0, h:0};
+
+// 모드 전환
+function toggleAddMode(mode) {
+    document.querySelectorAll('.add-box').forEach(el => el.classList.remove('show'));
+    document.querySelectorAll('.mode-select .menu-btn').forEach(btn => btn.style.opacity = '0.5');
+    if (mode === 'text') {
+        document.getElementById('add-text-box').classList.add('show');
+        document.querySelectorAll('.mode-select .menu-btn')[0].style.opacity = '1';
+        clearImage('q'); clearImage('desc');
+    } else {
+        document.getElementById('add-image-box').classList.add('show');
+        document.querySelectorAll('.mode-select .menu-btn')[1].style.opacity = '1';
+    }
+}
+
+function triggerCamera(type) {
+    currentCropType = type;
+    const input = document.getElementById('camera-input');
+    input.value = '';
+    input.click();
+}
+
+function handleImageFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return showToast("이미지 파일만 가능합니다.", 'error');
+
+    showLoading(true);
+    const url = URL.createObjectURL(file);
+    cropImg.onload = function() {
+        showLoading(false);
+        // GPU 메모리 보호 (4K 이상 리사이징 경고)
+        if (cropImg.width > 4000 || cropImg.height > 4000) showToast("이미지 최적화 중...", 'info');
+        rotationAngle = 0;
+        startCropping();
+    };
+    cropImg.onerror = function() {
+        showLoading(false);
+        showToast("이미지 로드 실패", 'error');
+        URL.revokeObjectURL(url);
+    };
+    cropImg.src = url;
+    currentCropBlob = file;
+}
+
+function startCropping() {
+    document.getElementById('crop-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // 초기 영역: 중앙에 배치
+    const cw = Math.min(window.innerWidth * 0.6, cropImg.width * 0.6);
+    const ch = cw * 0.6;
+    cropRect = { x: 50, y: 50, w: cw, h: ch };
+    drawCropCanvas();
+}
+
+function drawCropCanvas() {
+    // 1. 캔버스 준비 (회전 고려)
+    const isVertical = rotationAngle % 180 !== 0;
+    const w = isVertical ? cropImg.height : cropImg.width;
+    const h = isVertical ? cropImg.width : cropImg.height;
+    
+    const container = document.getElementById('crop-canvas-container');
+    const maxWidth = container.clientWidth;
+    const maxHeight = window.innerHeight * 0.6;
+    let scale = Math.min(maxWidth / w, maxHeight / h);
+    
+    // Retina 디스플레이 대응
+    const dpr = window.devicePixelRatio || 1;
+    cropCanvas.width = w * dpr;
+    cropCanvas.height = h * dpr;
+    cropCanvas.style.width = (w * scale) + 'px';
+    cropCanvas.style.height = (h * scale) + 'px';
+    
+    cropCtx.scale(dpr, dpr);
+    cropCtx.clearRect(0, 0, w, h);
+    
+    // 2. 이미지 그리기
+    cropCtx.save();
+    cropCtx.translate(w/2, h/2);
+    cropCtx.rotate(rotationAngle * Math.PI / 180);
+    cropCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
+    cropCtx.restore();
+
+    // 3. 어두운 오버레이 (Mask)
+    cropCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    cropCtx.fillRect(0, 0, w, h);
+
+    // 4. 선택 영역 클리어 (밝게) & 테두리
+    cropCtx.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+    cropCtx.strokeStyle = '#fff';
+    cropCtx.lineWidth = 2;
+    cropCtx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+    
+    // 밝은 영역 다시 그리기 (Clip)
+    cropCtx.save();
+    cropCtx.beginPath();
+    cropCtx.rect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+    cropCtx.clip();
+    cropCtx.translate(w/2, h/2);
+    cropCtx.rotate(rotationAngle * Math.PI / 180);
+    cropCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
+    cropCtx.restore();
+
+    // 5. 리사이즈 핸들 (우하단 빨간 점)
+    cropCtx.fillStyle = '#ef5350';
+    cropCtx.beginPath();
+    cropCtx.arc(cropRect.x + cropRect.w, cropRect.y + cropRect.h, 10, 0, Math.PI*2);
+    cropCtx.fill();
+    cropCtx.strokeStyle = '#fff';
+    cropCtx.stroke();
+}
+
+function rotateImage() {
+    rotationAngle = (rotationAngle + 90) % 360;
+    cropRect = {x:50, y:50, w:100, h:100}; // 회전 시 초기화
+    drawCropCanvas();
+}
+
+function applyCrop() {
+    showLoading(true);
+    setTimeout(() => {
+        const tempCanvas = document.createElement('canvas');
+        const maxDim = 800; // 최대 해상도 제한 (용량 최적화)
+        let rw = cropRect.w;
+        let rh = cropRect.h;
+        if (rw > maxDim || rh > maxDim) {
+            const ratio = Math.min(maxDim / rw, maxDim / rh);
+            rw *= ratio; rh *= ratio;
+        }
+        
+        tempCanvas.width = rw;
+        tempCanvas.height = rh;
+        const tCtx = tempCanvas.getContext('2d');
+        
+        // 화면에 보이는 그대로 추출
+        // 1. 임시 캔버스에 원본을 회전시켜 그림
+        const isVertical = rotationAngle % 180 !== 0;
+        const w = isVertical ? cropImg.height : cropImg.width;
+        const h = isVertical ? cropImg.width : cropImg.height;
+        
+        const sourceCanvas = document.createElement('canvas');
+        sourceCanvas.width = w;
+        sourceCanvas.height = h;
+        const sCtx = sourceCanvas.getContext('2d');
+        sCtx.translate(w/2, h/2);
+        sCtx.rotate(rotationAngle * Math.PI / 180);
+        sCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
+        
+        // 2. 크롭 영역 추출
+        tCtx.drawImage(sourceCanvas, 
+            cropRect.x, cropRect.y, cropRect.w, cropRect.h, 
+            0, 0, rw, rh
+        );
+        
+        const base64 = tempCanvas.toDataURL('image/jpeg', 0.7);
+        
+        if (currentCropType === 'question') {
+            document.getElementById('preview-q-img').src = base64;
+            document.getElementById('preview-q-img').style.display = 'block';
+            document.querySelector('#p-area-q .img-placeholder').style.display = 'none';
+            document.querySelector('#p-area-q button').style.display = 'block';
+        } else {
+            document.getElementById('preview-desc-img').src = base64;
+            document.getElementById('preview-desc-img').style.display = 'block';
+            document.querySelector('#p-area-desc .img-placeholder').style.display = 'none';
+            document.querySelector('#p-area-desc button').style.display = 'block';
+        }
+        
+        closeCrop();
+        showLoading(false);
+    }, 100);
+}
+
+function closeCrop() {
+    document.getElementById('crop-modal').style.display = 'none';
+    document.body.style.overflow = '';
+    if(cropImg.src) URL.revokeObjectURL(cropImg.src);
+}
+
+// --- [스마트 자르기 터치 이벤트 (이동/리사이즈)] ---
+const cropContainer = document.getElementById('crop-canvas-container');
+
+cropContainer.addEventListener('pointerdown', e => {
+    const rect = cropCanvas.getBoundingClientRect();
+    const scaleX = cropCanvas.width / rect.width / (window.devicePixelRatio||1);
+    const scaleY = cropCanvas.height / rect.height / (window.devicePixelRatio||1);
+    
+    // 캔버스 내부 좌표
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // 핸들 감지 (우하단)
+    const handleDist = Math.sqrt(Math.pow(x - (cropRect.x + cropRect.w), 2) + Math.pow(y - (cropRect.y + cropRect.h), 2));
+    
+    if (handleDist < 25 * scaleX) {
+        cropDragMode = 'resize';
+    } else if (x >= cropRect.x && x <= cropRect.x + cropRect.w && y >= cropRect.y && y <= cropRect.y + cropRect.h) {
+        cropDragMode = 'move';
+    } else {
+        cropDragMode = 'none';
+        return;
+    }
+    
+    dragStart = { x: e.clientX, y: e.clientY };
+    initialRect = { ...cropRect };
+    e.preventDefault();
+});
+
+window.addEventListener('pointermove', e => {
+    if (cropDragMode === 'none') return;
+    
+    const rect = cropCanvas.getBoundingClientRect();
+    const scaleX = cropCanvas.width / rect.width / (window.devicePixelRatio||1);
+    const scaleY = cropCanvas.height / rect.height / (window.devicePixelRatio||1);
+    
+    const dx = (e.clientX - dragStart.x) * scaleX;
+    const dy = (e.clientY - dragStart.y) * scaleY;
+    
+    // 캔버스 실제 크기
+    const cw = cropCanvas.width / (window.devicePixelRatio||1);
+    const ch = cropCanvas.height / (window.devicePixelRatio||1);
+
+    if (cropDragMode === 'move') {
+        let nx = initialRect.x + dx;
+        let ny = initialRect.y + dy;
+        // 경계 제한
+        nx = Math.max(0, Math.min(cw - initialRect.w, nx));
+        ny = Math.max(0, Math.min(ch - initialRect.h, ny));
+        cropRect.x = nx;
+        cropRect.y = ny;
+    } else if (cropDragMode === 'resize') {
+        let nw = initialRect.w + dx;
+        let nh = initialRect.h + dy;
+        // 최소 크기 제한 (50px)
+        nw = Math.max(50, Math.min(cw - initialRect.x, nw));
+        nh = Math.max(50, Math.min(ch - initialRect.y, nh));
+        cropRect.w = nw;
+        cropRect.h = nh;
+    }
+    
+    drawCropCanvas();
+});
+window.addEventListener('pointerup', () => cropDragMode = 'none');
+
+
+// 이미지 삭제
+function clearImage(type) {
+    if (type === 'q') {
+        document.getElementById('preview-q-img').src = "";
+        document.getElementById('preview-q-img').style.display = 'none';
+        document.querySelector('#p-area-q .img-placeholder').style.display = 'block';
+        document.querySelector('#p-area-q button').style.display = 'none';
+    } else {
+        document.getElementById('preview-desc-img').src = "";
+        document.getElementById('preview-desc-img').style.display = 'none';
+        document.querySelector('#p-area-desc .img-placeholder').style.display = 'block';
+        document.querySelector('#p-area-desc button').style.display = 'none';
+    }
+}
+
+// --- [4. 문제 관리 (등록/삭제/목록)] ---
+function addTextWord() {
+    const q = document.getElementById('new-q').value.trim();
+    const a = document.getElementById('new-a').value.trim();
+    const d = document.getElementById('new-desc').value.trim();
+    if (q && a) {
+        if (isDuplicate(q, a)) return showToast("이미 존재합니다.", 'error');
+        saveToDB({ type: 'text', q: escapeHtml(q), a: escapeHtml(a), desc: escapeHtml(d), wrongCount: 0 }, () => {
+            document.getElementById('new-q').value = "";
+            document.getElementById('new-a').value = "";
+            document.getElementById('new-desc').value = "";
+            showToast("등록되었습니다.", 'success');
+        });
+    } else showToast("문제와 정답을 입력하세요.", 'error');
+}
+
+function addImageWord() {
+    const imgSrc = document.getElementById('preview-q-img').src;
+    const qText = document.getElementById('img-q-text').value.trim();
+    const a = document.getElementById('img-a').value.trim();
+    const dText = document.getElementById('img-desc-text').value.trim();
+    const dImgSrc = document.getElementById('preview-desc-img').src;
+    
+    if (!imgSrc || imgSrc.length < 100) return showToast("문제 이미지를 등록해주세요!", 'error');
+    if (!a) return showToast("정답을 입력해주세요!", 'error');
+    
+    saveToDB({
+        type: 'image',
+        q: imgSrc,
+        qText: escapeHtml(qText),
+        a: escapeHtml(a),
+        desc: escapeHtml(dText),
+        descImg: (dImgSrc && dImgSrc.length > 100) ? dImgSrc : null,
+        wrongCount: 0
+    }, () => {
+        clearImage('q'); clearImage('desc');
+        document.getElementById('img-q-text').value = "";
+        document.getElementById('img-a').value = "";
+        document.getElementById('img-desc-text').value = "";
+        showToast("이미지 문제 등록 완료!", 'success');
+    });
+}
+
+function isDuplicate(q, a) {
+    const nQ = q.replace(/\s/g,"").toUpperCase();
+    const nA = a.replace(/\s/g,"").toUpperCase();
+    return vocabulary.some(v => v.type === 'text' && v.q.replace(/\s/g,"").toUpperCase() === nQ && v.a.replace(/\s/g,"").toUpperCase() === nA);
+}
+
+function renderWordList() {
+    const list = document.getElementById('word-list');
+    if (vocabulary.length === 0) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:#888">등록된 문제가 없습니다.</div>';
+        return;
+    }
+    list.innerHTML = vocabulary.map(v => {
+        let contentHtml = v.type === 'image' ? 
+            `<div style="display:flex;align-items:center"><img src="${v.q}" class="thumb-img"><div><b style="font-size:0.9rem">[이미지]</b><div style="font-size:0.8rem;color:#555">${v.qText?v.qText.substring(0,10)+'...':''}</div><small>답:${v.a}</small></div></div>` : 
+            `<div><b>${v.q}</b><br><small>${v.a}</small></div>`;
+        return `<div class="word-card"><input type="checkbox" class="chk-box" value="${v.id}" onchange="updateBulkBtn()"><div class="word-content">${contentHtml}${v.wrongCount > 0 ? `<span style="color:var(--danger);font-size:0.7rem;margin-left:5px">🔥(${v.wrongCount})</span>` : ''}</div></div>`;
+    }).reverse().join('');
     document.getElementById('chk-all').checked = false;
     updateBulkBtn();
 }
 
-// [NEW] 전체 선택 토글
-function toggleSelectAll(){
+function updateBulkBtn() {
+    const cnt = document.querySelectorAll('.chk-box:checked').length;
+    document.getElementById('btn-del-sel').style.display = cnt > 0 ? 'block' : 'none';
+    document.getElementById('btn-del-sel').innerText = `🗑️ 선택 삭제 (${cnt})`;
+}
+function toggleSelectAll() {
     const all = document.getElementById('chk-all').checked;
     document.querySelectorAll('.chk-box').forEach(c => c.checked = all);
     updateBulkBtn();
 }
-
-// [NEW] 삭제 버튼 업데이트
-function updateBulkBtn(){
-    const cnt = document.querySelectorAll('.chk-box:checked').length;
-    const btn = document.getElementById('btn-del-sel');
-    if(cnt > 0) {
-        btn.style.display = 'block';
-        btn.innerText = `🗑️ 선택 삭제 (${cnt})`;
-    } else {
-        btn.style.display = 'none';
-    }
-}
-
-// [NEW] 선택 항목 일괄 삭제
-function deleteSelected(){
+function deleteSelected() {
     const chks = document.querySelectorAll('.chk-box:checked');
-    if(chks.length === 0) return;
-    
-    if(confirm(`선택한 ${chks.length}개 문제를 삭제하시겠습니까?`)){
-        // 체크된 인덱스들을 숫자로 변환
-        const toDel = Array.from(chks).map(c => parseInt(c.value));
-        // 해당 인덱스를 제외한 항목만 남김
-        vocabulary = vocabulary.filter((_, i) => !toDel.includes(i));
-        
-        localStorage.setItem('myVocab', JSON.stringify(vocabulary));
-        renderWordList();
-        fillDeck();
-        showToast("삭제 완료", 'success');
+    if (chks.length === 0) return;
+    if (confirm(`${chks.length}개를 삭제하시겠습니까?`)) {
+        deleteFromDB(Array.from(chks).map(c => parseInt(c.value)));
     }
 }
 
-function triggerFile(m){fileMode=m;document.getElementById('file-input').click()}
-function handleFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(fileMode==='append'){let c=0;d.forEach(i=>{if(!isDuplicate(i.q,i.a)){vocabulary.push({...i,wrongCount:i.wrongCount||0});c++}});showToast(`${c}개 추가`,'info')}else{vocabulary=d.map(v=>({...v,wrongCount:v.wrongCount||0}));showToast("교체 완료",'success')}localStorage.setItem('myVocab',JSON.stringify(vocabulary));renderWordList();fillDeck()}catch(err){showToast("오류",'error')}e.target.value=''};r.readAsText(f)}
-function exportJSON(){const b=new Blob([JSON.stringify(vocabulary,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`quiz_backup.json`;a.click()}
-function confirmExit(){if(confirm("나갈까요?"))showScreen('home')}
-window.onload=updateScores;window.addEventListener('mousemove',e=>{if(isDragging){moveHelper(e);updateGhost(e)}});window.addEventListener('mouseup',e=>{if(isDragging)handleTouchEnd(e)});
+function exportJSON() {
+    if (vocabulary.length === 0) return showToast("데이터 없음", 'error');
+    showLoading(true);
+    setTimeout(() => {
+        try {
+            const blob = new Blob([JSON.stringify(vocabulary)], {type: "application/json"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `quiz_backup_v7_4.json`;
+            a.click();
+            showToast("백업 완료", 'success');
+        } catch(e) { showToast("백업 실패", 'error'); }
+        showLoading(false);
+    }, 100);
+}
+
+function triggerFile(mode) {
+    const input = document.getElementById('json-input');
+    input.dataset.mode = mode;
+    input.value = '';
+    input.click();
+}
+
+function handleJsonFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    showLoading(true);
+    const reader = new FileReader();
+    reader.onload = ev => {
+        try {
+            const data = JSON.parse(ev.target.result);
+            if (!Array.isArray(data)) throw new Error("Invalid");
+            const mode = document.getElementById('json-input').dataset.mode;
+            if (mode === 'import') {
+                if (confirm("기존 데이터를 덮어쓰시겠습니까?")) overwriteDB(data);
+                else showLoading(false);
+            } else {
+                let c = 0; data.forEach(i => { delete i.id; saveToDB(i); c++; });
+                showLoading(false); showToast(`${c}개 추가됨`, 'success');
+            }
+        } catch (err) { showLoading(false); showToast("파일 오류", 'error'); }
+    };
+    reader.readAsText(file);
+}
+
+function toggleExcel() {
+    const e = document.getElementById('excel-area');
+    e.style.display = e.style.display === 'none' ? 'block' : 'none';
+}
+function parseExcel() {
+    const r = document.getElementById('excel-input').value;
+    if(!r.trim()) return showToast("내용 없음", 'error');
+    const rows = r.split('\n');
+    let c = 0;
+    rows.forEach(w => {
+        const s = w.split('\t');
+        if(s.length >= 2) {
+            const q = s[0].trim(), a = s[1].trim();
+            if(q && a && !isDuplicate(q, a)) { saveToDB({type:'text', q, a, wrongCount:0}); c++; }
+        }
+    });
+    document.getElementById('excel-input').value = "";
+    showToast(`${c}개 추가됨`, 'success');
+    toggleExcel();
+}
+// --- [5. 게임 로직 (퍼즐 + 퀴즈 + 복습 모드)] ---
+const SHAPES = [
+    [[0,0],[0,1],[1,0],[1,1]], // O
+    [[0,0],[1,0],[2,0],[3,0],[4,0]], // I5
+    [[0,0],[0,1],[0,2],[0,3],[0,4]], // I5-hor
+    [[0,0],[1,0],[2,0]], // I3
+    [[0,0],[0,1],[0,2]], // I3-hor
+    [[0,0],[1,0],[2,0],[2,1],[2,2]], // L
+    [[0,0],[0,1],[0,2],[1,2],[2,2]], // L-rev
+    [[0,0],[1,1],[2,2],[3,3]], // Diagonal
+    [[0,2],[1,2],[2,0],[2,1],[2,2]], // U
+    [[0,1],[1,0],[1,1],[1,2],[2,1]], // +
+    [[0,0],[0,1],[1,1],[1,2],[2,2]], // Z
+    [[0,0],[1,0],[1,1]], // Small L
+    [[0,0],[0,1],[1,0]], // Small L-rev
+    [[0,0],[0,1],[0,2],[0,3]], // I4
+    [[0,0],[1,0],[2,0],[3,0]], // I4-vert
+    [[0,0]] // Dot
+];
+
+let score = 0, highScore = localStorage.getItem('puzzleBestV7') || 0;
+let grid = Array(64).fill(0);
+let trayShapes = [];
+let quizDeck = [];
+let curQuiz = 0, quizCorrect = 0, sessionQuizzes = [];
+let isReviewMode = false; // 복습 모드 플래그
+let isDragging = false, dragShapeIndex = null, ghostIndices = [];
+let masterR = 0, masterC = 0;
+const TOUCH_OFFSET = 80;
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    window.scrollTo(0, 0);
+    updateScores();
+    if (id === 'manage') renderWordList();
+    if (id === 'home') updateReviewBtn(); // 홈으로 올 때 오답노트 버튼 갱신
+}
+
+function updateScores() {
+    document.getElementById('high-score-home').innerText = highScore;
+    document.getElementById('high-score-game').innerText = highScore;
+    document.getElementById('score').innerText = score;
+}
+
+function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function fillDeck() {
+    quizDeck = [];
+    for (let i = 0; i < vocabulary.length; i++) quizDeck.push(i);
+    shuffle(quizDeck);
+}
+
+// [게임 모드] 퀴즈 시작
+function startQuiz() {
+    if (vocabulary.length < 1) { refillTray(3); return; }
+    
+    isReviewMode = false;
+    curQuiz = 0;
+    quizCorrect = 0;
+    let f = [];
+    
+    // 오답 우선 출제 (게임 중에도 학습 유도)
+    let w = vocabulary.map((v, i) => ({ idx: i, wrong: v.wrongCount })).filter(v => v.wrong > 0).map(v => v.idx);
+    if (w.length > 0) f.push(w[Math.floor(Math.random() * w.length)]);
+    
+    while (f.length < 3) {
+        if (quizDeck.length === 0) fillDeck();
+        const n = quizDeck.pop();
+        if (vocabulary[n] && !f.includes(n)) f.push(n);
+        if (f.length < 3 && vocabulary.length < 3 && quizDeck.length === 0) break;
+    }
+    
+    shuffle(f);
+    sessionQuizzes = f.map(i => vocabulary[i]);
+    
+    document.getElementById('quiz-modal').style.display = 'flex';
+    showQuestion();
+}
+
+// [복습 모드] 오답 노트 시작
+function startReviewMode() {
+    const wrongItems = vocabulary.filter(v => (v.wrongCount||0) > 0);
+    if (wrongItems.length === 0) return showToast("틀린 문제가 없습니다!", 'success');
+    
+    isReviewMode = true;
+    curQuiz = 0;
+    quizCorrect = 0;
+    sessionQuizzes = shuffle([...wrongItems]); // 틀린 문제 전부 가져오기
+    
+    document.getElementById('quiz-modal').style.display = 'flex';
+    showQuestion();
+}
+
+function showQuestion() {
+    if (!sessionQuizzes[curQuiz]) return;
+    const q = sessionQuizzes[curQuiz];
+    const total = sessionQuizzes.length;
+    
+    document.getElementById('q-title').innerText = isReviewMode ? 
+        `🔥 오답 복습 (${curQuiz + 1}/${total})` : 
+        `퀴즈 (${curQuiz + 1}/3)`;
+    
+    const displayArea = document.getElementById('q-display-area');
+    const textArea = document.getElementById('q-text-main');
+    
+    displayArea.innerHTML = "";
+    textArea.innerHTML = "";
+    
+    if (q.type === 'image') {
+        const img = document.createElement('img');
+        img.src = q.q;
+        img.className = 'q-img-main';
+        img.onclick = () => showImgView(q.q);
+        displayArea.appendChild(img);
+        
+        const zoomHint = document.createElement('div');
+        zoomHint.innerText = "🔍 터치하여 확대";
+        zoomHint.style.fontSize = "0.8rem";
+        zoomHint.style.color = "#888";
+        displayArea.appendChild(zoomHint);
+        
+        if (q.qText) textArea.innerText = q.qText;
+        else textArea.style.display = 'none';
+    } else {
+        textArea.style.display = 'block';
+        textArea.innerText = q.q;
+    }
+
+    document.getElementById('q-input').value = "";
+    document.getElementById('q-feedback').innerText = "";
+    document.getElementById('q-desc-area').style.display = "none";
+    document.getElementById('q-submit').style.display = "block";
+    document.getElementById('q-next').style.display = "none";
+}
+
+function checkQuizAnswer() {
+    const input = document.getElementById('q-input').value.trim();
+    if (!input) return;
+    
+    const i = input.replace(/\s/g, "").toUpperCase();
+    const qData = sessionQuizzes[curQuiz];
+    const ra = qData.a.replace(/\s/g, "").toUpperCase();
+    let isCorrect = (i === "O" || i === "X") ? (ra.charAt(0) === i) : (i === ra);
+    
+    const fb = document.getElementById('q-feedback');
+    const descArea = document.getElementById('q-desc-area');
+    
+    if (isCorrect) {
+        quizCorrect++;
+        playSound('correct');
+        if (qData.wrongCount > 0) {
+            qData.wrongCount--;
+            saveToDB(qData); // DB 즉시 반영
+        }
+        fb.innerHTML = `<span style='color:var(--s)'>정답! ✨<br>${qData.a}</span>`;
+    } else {
+        playSound('wrong');
+        qData.wrongCount = (qData.wrongCount || 0) + 1;
+        saveToDB(qData); // DB 즉시 반영
+        fb.innerHTML = `<span style='color:var(--danger)'>오답! ❌<br>${qData.a}</span>`;
+    }
+
+    // 해설 표시
+    if (qData.desc || qData.descImg) {
+        descArea.innerHTML = "";
+        descArea.style.display = "block";
+        if (qData.descImg) {
+            const dImg = document.createElement('img');
+            dImg.src = qData.descImg;
+            dImg.className = 'desc-img';
+            dImg.onclick = () => showImgView(qData.descImg);
+            descArea.appendChild(dImg);
+        }
+        if (qData.desc) {
+            const p = document.createElement('p');
+            p.innerText = qData.desc;
+            p.style.marginTop = "5px";
+            descArea.appendChild(p);
+        }
+    }
+
+    document.getElementById('q-submit').style.display = "none";
+    document.getElementById('q-next').style.display = "block";
+}
+
+function nextQuestion() {
+    curQuiz++;
+    if (curQuiz < sessionQuizzes.length) {
+        showQuestion();
+    } else {
+        document.getElementById('quiz-modal').style.display = 'none';
+        
+        if (isReviewMode) {
+            // 복습 모드 종료
+            showToast("복습 완료! 수고하셨습니다.", 'success');
+            showScreen('home');
+            updateReviewBtn(); // 남은 오답 수 갱신
+        } else {
+            // 게임 모드 종료
+            if (quizCorrect >= 2) refillTray(quizCorrect);
+            else {
+                showToast("불합격! 다시 공부하세요.", 'error');
+                setTimeout(startQuiz, 1000);
+            }
+        }
+    }
+}
+
+function refillTray(c) {
+    trayShapes = [0, 1, 2].map(() => [...SHAPES[Math.floor(Math.random() * SHAPES.length)]]);
+    if (c === 3) {
+        const b = [[0, 0]]; b.isBonus = true; trayShapes.push(b);
+    }
+    renderTray();
+    checkGameOver();
+}
+
+function renderTray() {
+    const t = document.getElementById('tray');
+    t.innerHTML = "";
+    trayShapes.forEach((s, i) => {
+        if (!s) return;
+        const d = document.createElement('div');
+        d.className = 'shape-preview';
+        d.id = `shape-${i}`;
+        d.addEventListener('touchstart', e => handleStart(e, i), { passive: false });
+        d.addEventListener('mousedown', e => handleStart(e, i));
+        
+        for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+            const el = document.createElement('div');
+            const filled = s.some(p => p[0] === r && p[1] === c);
+            el.className = filled ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
+            d.appendChild(el);
+        }
+        t.appendChild(d);
+    });
+}
+
+function handleStart(e, i) {
+    if (e.cancelable) e.preventDefault();
+    isDragging = true;
+    dragShapeIndex = i;
+    const s = trayShapes[i];
+    const h = document.getElementById('drag-helper');
+    h.innerHTML = "";
+    
+    const cs = document.querySelector('.cell').getBoundingClientRect().width;
+    let minR=5, minC=5, maxR=-1, maxC=-1;
+    s.forEach(p => {
+        minR = Math.min(minR, p[0]); maxR = Math.max(maxR, p[0]);
+        minC = Math.min(minC, p[1]); maxC = Math.max(maxC, p[1]);
+    });
+    
+    let minDist = 999;
+    s.forEach(p => {
+        if (p[0] === maxR) {
+            const dist = Math.abs(p[1] - (minC + maxC) / 2);
+            if (dist < minDist) { minDist = dist; masterR = p[0]; masterC = p[1]; }
+        }
+    });
+
+    h.style.display = "grid";
+    h.style.gridTemplateRows = `repeat(${maxR - minR + 1},${cs}px)`;
+    h.style.gridTemplateColumns = `repeat(${maxC - minC + 1},${cs}px)`;
+    h.style.gap = "1px";
+    h.style.width = (maxC - minC + 1) * cs + (maxC - minC) + 'px';
+    h.style.height = (maxR - minR + 1) * cs + (maxR - minR) + 'px';
+
+    for (let r = minR; r <= maxR; r++) for (let c = minC; c <= maxC; c++) {
+        const el = document.createElement('div');
+        const ip = s.some(p => p[0] === r && p[1] === c);
+        el.className = ip ? (s.isBonus ? 'preview-cell filled bonus' : 'preview-cell filled') : 'preview-cell';
+        if (!ip) el.style.visibility = "hidden";
+        h.appendChild(el);
+    }
+    moveHelper(e);
+    document.getElementById(`shape-${i}`).classList.add('dragging');
+    playSound('click');
+    ghostIndices = [];
+}
+
+function handleMove(e) {
+    if (!isDragging) return;
+    if (e.cancelable) e.preventDefault();
+    moveHelper(e);
+    updateGhost(e);
+}
+
+function handleEnd(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    document.getElementById('drag-helper').style.display = "none";
+    document.querySelectorAll('.shape-preview').forEach(el => el.classList.remove('dragging'));
+    if (ghostIndices.length > 0) placeBlock(ghostIndices, trayShapes[dragShapeIndex]);
+    else clearGhost();
+    ghostIndices = [];
+    dragShapeIndex = null;
+}
+
+function moveHelper(e) {
+    const h = document.getElementById('drag-helper');
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const cs = document.querySelector('.cell').getBoundingClientRect().width;
+    const s = trayShapes[dragShapeIndex];
+    let minR=5, minC=5;
+    s.forEach(p => { minR = Math.min(minR, p[0]); minC = Math.min(minC, p[1]); });
+    const relX = (masterC - minC) * cs + (cs / 2);
+    const relY = (masterR - minR) * cs + (cs / 2);
+    h.style.left = (clientX - relX) + 'px';
+    h.style.top = (clientY - TOUCH_OFFSET - relY) + 'px';
+}
+
+function updateGhost(e) {
+    clearGhost();
+    ghostIndices = [];
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const el = document.elementFromPoint(clientX, clientY - TOUCH_OFFSET);
+    if (!el || !el.classList.contains('cell')) return;
+    
+    const id = parseInt(el.id.split('-')[1]);
+    const tr = Math.floor(id / 8), tc = id % 8;
+    const s = trayShapes[dragShapeIndex];
+    const sr = tr - masterR, sc = tc - masterC;
+    const inds = [];
+    
+    const fit = s.every(p => {
+        const nr = p[0] + sr, nc = p[1] + sc;
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && grid[nr * 8 + nc] === 0) {
+            inds.push(nr * 8 + nc); return true;
+        }
+        return false;
+    });
+    
+    if (fit) {
+        ghostIndices = inds;
+        inds.forEach(i => document.getElementById('cell-' + i).classList.add(s.isBonus ? 'ghost-bonus' : 'ghost'));
+    }
+}
+
+function clearGhost() {
+    document.querySelectorAll('.cell').forEach(c => {
+        c.classList.remove('ghost'); c.classList.remove('ghost-bonus');
+    });
+}
+
+function placeBlock(indices, shape) {
+    playSound('place');
+    indices.forEach(x => {
+        grid[x] = 1;
+        document.getElementById('cell-' + x).className = shape.isBonus ? 'cell bonus-filled' : 'cell filled';
+    });
+    trayShapes[dragShapeIndex] = null;
+    renderTray();
+    checkLines();
+    if (trayShapes.every(v => v === null)) setTimeout(startQuiz, 500);
+    else checkGameOver();
+}
+
+function checkLines() {
+    let r = [], c = [];
+    for (let i = 0; i < 8; i++) {
+        if (grid.slice(i * 8, i * 8 + 8).every(v => v === 1)) r.push(i);
+        let col = [];
+        for (let j = 0; j < 8; j++) col.push(grid[j * 8 + i]);
+        if (col.every(v => v === 1)) c.push(i);
+    }
+    if (r.length + c.length > 0) {
+        playSound('clear');
+        const g = document.getElementById('grid');
+        g.classList.remove('shaking'); void g.offsetWidth; g.classList.add('shaking');
+        const sc = (r.length + c.length) * 10 * (r.length + c.length);
+        score += sc; updateScores();
+        const e = document.createElement('div');
+        e.className = 'float-score'; e.innerText = `+${sc}`;
+        document.getElementById('grid-container').appendChild(e);
+        setTimeout(() => e.remove(), 1000);
+        if (score > highScore) { highScore = score; localStorage.setItem('puzzleBestV7', highScore); }
+    }
+    r.forEach(i => { for (let k = 0; k < 8; k++) animateClear(i * 8 + k); });
+    c.forEach(i => { for (let k = 0; k < 8; k++) animateClear(k * 8 + i); });
+}
+
+function animateClear(i) {
+    grid[i] = 0;
+    const e = document.getElementById('cell-' + i);
+    e.classList.add('clearing');
+    setTimeout(() => e.className = 'cell', 300);
+}
+
+function checkGameOver() {
+    const ok = trayShapes.some(s => {
+        if (!s) return false;
+        for (let i = 0; i < 64; i++) {
+            const r = Math.floor(i / 8), c = i % 8;
+            if (s.every(p => {
+                const nr = r + p[0], nc = c + p[1];
+                return nr < 8 && nc < 8 && grid[nr * 8 + nc] === 0;
+            })) return true;
+        }
+        return false;
+    });
+    if (!ok && !trayShapes.every(v => v === null)) {
+        showToast(`게임 종료! 점수: ${score}`, 'info');
+        setTimeout(() => showScreen('home'), 2000);
+    }
+}
+
+function startGame() {
+    if(!isDBReady) return showToast("데이터 로딩 중...", 'info');
+    initAudio();
+    if (vocabulary.length < 1) return showToast("문제를 등록해주세요!", 'error');
+    showScreen('game');
+    initGame();
+}
+
+function initGame() {
+    score = 0;
+    grid.fill(0);
+    updateScores();
+    const g = document.getElementById('grid');
+    g.innerHTML = "";
+    for (let i = 0; i < 64; i++) {
+        const c = document.createElement('div'); c.className = 'cell'; c.id = 'cell-' + i; g.appendChild(c);
+    }
+    refillTray(0); fillDeck();
+}
+
+function confirmExit() { if (confirm("나갈까요?")) showScreen('home'); }
+function showImgView(src) { document.getElementById('img-view-target').src = src; document.getElementById('img-view-modal').style.display = 'flex'; }
+function closeImgView() { document.getElementById('img-view-modal').style.display = 'none'; }
+
+// 리스너 통합
+window.addEventListener('touchmove', handleMove, { passive: false });
+window.addEventListener('touchend', handleEnd);
+window.addEventListener('mousemove', e => { if (isDragging) { moveHelper(e); updateGhost(e); } });
+window.addEventListener('mouseup', handleEnd);
 </script>
 </body>
 </html>
