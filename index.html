@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>암기 퍼즐 PRO v7.4</title>
+<title>암기 퍼즐 PRO v7.5</title>
 <style>
 /* --- [1. 기본 설정 및 변수] --- */
 :root{--p:#2e7d32;--s:#66bb6a;--bg:#e8f5e9;--grid-bg:#a5d6a7;--cell-bg:#c8e6c9;--bonus:#fdd835;--excel:#1b5e20;--text:#1b5e20;--danger:#ef5350;--overlay:rgba(0,0,0,0.6)}
@@ -44,7 +44,6 @@ body{font-family:-apple-system,'Pretendard',sans-serif;background:var(--bg);colo
 .btn-manage{background:#8d6e63}
 .btn-blue{background:#1976d2}
 .btn-outline{flex:1;min-width:30%;background:#fff;color:var(--text);border:3px solid #ccc;padding:18px 5px;border-radius:15px;font-size:1.1rem;font-weight:900;text-align:center}
-.btn-append{background:#e8f5e9;border-color:var(--p);color:var(--p)}
 
 /* --- [4. 관리자 화면 UI] --- */
 .mode-select{display:flex;gap:10px;margin-bottom:15px}
@@ -171,7 +170,7 @@ textarea{resize:none}
         </div>
         <button class="menu-btn btn-blue" style="margin:0 0 10px 0;padding:10px" onclick="triggerCamera('question')">📷 이미지 촬영/선택</button>
         
-        <textarea id="img-q-text" placeholder="문제 텍스트 (이미지와 함께 표시하려면 입력)" style="width:100%;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:5px"></textarea>
+        <textarea id="img-q-text" placeholder="문제 텍스트 (이미지와 함께 표시)" style="width:100%;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:5px"></textarea>
         <textarea id="img-a" placeholder="정답 (필수)" style="width:100%;height:50px;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:5px"></textarea>
         
         <div style="border-top:1px dashed #ccc;padding-top:10px;margin-top:5px">
@@ -212,7 +211,8 @@ textarea{resize:none}
         <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
             <button id="q-exit-btn" onclick="quitReview()" style="background:none;border:none;font-size:0.9rem;color:#888;font-weight:bold;cursor:pointer;display:none">🚪 나가기</button>
             <h2 id="q-title" style="color:var(--p);font-size:1.3rem;margin:0">복습 타임!</h2>
-            <div style="width:50px"></div> </div>
+            <div style="width:50px"></div>
+        </div>
 
         <div id="q-display-area"></div>
         <div id="q-text-main"></div>
@@ -244,14 +244,16 @@ textarea{resize:none}
     <button style="position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-weight:bold;font-size:1.5rem">×</button>
 </div>
 <script>
-// --- [1. 전역 변수 및 기본 유틸리티] ---
+// ============================================================
+// [파트 3] 기본 유틸리티 및 DB 엔진 (최적화 적용됨)
+// ============================================================
 let db;
 const DB_NAME = "PuzzleProDB";
-const DB_VERSION = 2; // v7.3/7.4 스키마
-let vocabulary = []; // 메모리상 문제 데이터
+const DB_VERSION = 2; 
+let vocabulary = [];
 let isDBReady = false;
 
-// 토스트 메시지 알림
+// 토스트 메시지
 function showToast(m, t='normal'){
     const c = document.getElementById('toast-container');
     const e = document.createElement('div');
@@ -259,7 +261,7 @@ function showToast(m, t='normal'){
     e.innerText = m;
     c.appendChild(e);
     c.style.zIndex = "99999";
-    void e.offsetWidth; // 리플로우 강제
+    void e.offsetWidth;
     e.classList.add('show');
     setTimeout(()=>{
         e.classList.remove('show');
@@ -267,12 +269,12 @@ function showToast(m, t='normal'){
     }, 2000);
 }
 
-// 로딩 오버레이 제어
+// 로딩 오버레이
 function showLoading(show){
     document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
 }
 
-// XSS 방어 (텍스트 위생처리)
+// XSS 방어
 function escapeHtml(text) {
     if (!text) return text;
     return text.replace(/[&<>"']/g, function(m) {
@@ -280,7 +282,7 @@ function escapeHtml(text) {
     });
 }
 
-// 오디오 시스템 (Web Audio API)
+// 오디오 시스템
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioContext = null;
 function initAudio(){ if(!audioContext) audioContext = new AudioCtx(); if(audioContext.state === 'suspended') audioContext.resume(); }
@@ -294,7 +296,7 @@ const snd = {
 function playSound(t){ if(audioContext) snd[t](audioContext.currentTime); }
 
 
-// --- [2. IndexedDB 엔진 (데이터베이스)] ---
+// IndexedDB 초기화
 window.onload = function() {
     initDB();
     updateScores();
@@ -314,7 +316,6 @@ function initDB() {
 
     request.onsuccess = function(e) {
         db = e.target.result;
-        // 구버전(LocalStorage) 마이그레이션
         const oldData = localStorage.getItem('myVocab');
         if (oldData) {
             try {
@@ -331,7 +332,7 @@ function initDB() {
 
     request.onerror = function(e) {
         showLoading(false);
-        showToast("DB 오류 발생! 앱을 다시 켜주세요.", 'error');
+        showToast("DB 접속 오류", 'error');
     };
 }
 
@@ -339,23 +340,20 @@ function migrateData(data) {
     const transaction = db.transaction(['vocab'], 'readwrite');
     const store = transaction.objectStore('vocab');
     let cnt = 0;
-    
     data.forEach(item => {
         item.type = item.type || 'text';
         delete item.id;
         store.add(item);
         cnt++;
     });
-
     transaction.oncomplete = function() {
         localStorage.removeItem('myVocab');
         showToast(`데이터 최적화 완료 (${cnt}건)`, 'success');
         loadVocabulary();
     };
-    
     transaction.onerror = function() {
         showLoading(false);
-        showToast("데이터 이사 실패.", 'error');
+        showToast("데이터 이사 실패", 'error');
     }
 }
 
@@ -369,15 +367,16 @@ function loadVocabulary() {
         isDBReady = true;
         showLoading(false);
         
-        // 홈 화면 버튼 업데이트
+        // 버튼 활성화
         const startBtn = document.getElementById('btn-start-game');
-        startBtn.disabled = false;
-        startBtn.innerText = "게임 시작";
+        if(startBtn) {
+            startBtn.disabled = false;
+            startBtn.innerText = "게임 시작";
+        }
         
-        // 오답 노트 버튼 업데이트
         updateReviewBtn();
-
-        document.getElementById('btn-manage-home').disabled = false;
+        const manageBtn = document.getElementById('btn-manage-home');
+        if(manageBtn) manageBtn.disabled = false;
         
         if(document.getElementById('screen-manage').classList.contains('active')) {
             renderWordList();
@@ -385,13 +384,14 @@ function loadVocabulary() {
     };
 }
 
-// 오답 노트 버튼 상태 갱신
 function updateReviewBtn() {
     const wrongCnt = vocabulary.filter(v => (v.wrongCount || 0) > 0).length;
     const revBtn = document.getElementById('btn-review');
-    revBtn.innerText = `🔥 오답 노트 (${wrongCnt})`;
-    revBtn.disabled = wrongCnt === 0;
-    revBtn.style.opacity = wrongCnt > 0 ? '1' : '0.6';
+    if(revBtn) {
+        revBtn.innerText = `🔥 오답 노트 (${wrongCnt})`;
+        revBtn.disabled = wrongCnt === 0;
+        revBtn.style.opacity = wrongCnt > 0 ? '1' : '0.6';
+    }
 }
 
 function saveToDB(item, callback) {
@@ -401,22 +401,24 @@ function saveToDB(item, callback) {
     
     transaction.onabort = function(e) {
         if(e.target.error && e.target.error.name === 'QuotaExceededError') {
-            showToast("저장 공간 부족! 문제를 삭제하세요.", 'error');
+            showToast("용량 부족! 문제를 삭제하세요.", 'error');
         }
     };
 
-    const req = store.put(item); // add 대신 put 사용 (수정 지원)
+    const req = store.put(item); 
     req.onsuccess = function() {
-        // 메모리 업데이트 없이 loadVocabulary 호출하여 동기화
+        // UI 즉시 반영을 위한 메모리 업데이트 (DB 재로딩 아님)
+        // 안전하게 재로딩하되, 대량 작업 아니므로 OK
         const t = db.transaction(['vocab'], 'readonly');
         t.objectStore('vocab').getAll().onsuccess = function(e) {
             vocabulary = e.target.result || [];
-            updateReviewBtn(); // 오답 수 갱신
+            updateReviewBtn(); 
             if(callback) callback();
         }
     };
 }
 
+// [최적화됨] 대량 삭제
 function deleteFromDB(ids) {
     showLoading(true);
     const transaction = db.transaction(['vocab'], 'readwrite');
@@ -427,8 +429,20 @@ function deleteFromDB(ids) {
     });
 
     transaction.oncomplete = function() {
-        loadVocabulary();
-        showToast("삭제 완료", 'success');
+        const idSet = new Set(ids);
+        vocabulary = vocabulary.filter(v => !idSet.has(v.id));
+        
+        if(document.getElementById('screen-manage').classList.contains('active')) {
+            renderWordList();
+        }
+        updateReviewBtn();
+        showLoading(false);
+        showToast(`${ids.length}개 삭제 완료`, 'success');
+    };
+    
+    transaction.onerror = function() {
+        showLoading(false);
+        showToast("삭제 중 오류 발생", 'error');
     };
 }
 
@@ -442,7 +456,6 @@ function overwriteDB(newData) {
             delete item.id;
             store.add(item);
         });
-        showLoading(false);
     };
     
     transaction.oncomplete = function() {
@@ -450,35 +463,35 @@ function overwriteDB(newData) {
         showToast("복구 완료", 'success');
     };
 }
-// --- [3. 이미지 처리 엔진 (스마트 자르기 + iOS 최적화)] ---
+
+// ============================================================
+// [파트 4] 이미지 엔진 및 관리 로직
+// ============================================================
 let currentCropBlob = null;
 let currentCropType = null;
 let cropImg = new Image();
 let cropCanvas = document.getElementById('crop-canvas');
 let cropCtx = cropCanvas.getContext('2d');
 let rotationAngle = 0;
-// 자르기 상태 변수
 let cropRect = {x:50, y:50, w:150, h:150};
-let cropDragMode = 'none'; // 'move' or 'resize'
+let cropDragMode = 'none';
 let dragStart = {x:0, y:0};
 let initialRect = {x:0, y:0, w:0, h:0};
 
-// [수정됨] 토글 기능 (열려있으면 닫고, 닫혀있으면 엶)
+// 메뉴 토글 기능
 function toggleAddMode(mode) {
     const targetId = mode === 'text' ? 'add-text-box' : 'add-image-box';
     const targetBox = document.getElementById(targetId);
     const isAlreadyOpen = targetBox.classList.contains('show');
 
-    // 1. 모든 메뉴 닫기 및 스타일 초기화
     document.querySelectorAll('.add-box').forEach(el => el.classList.remove('show'));
     document.querySelectorAll('.mode-select .menu-btn').forEach(btn => btn.style.opacity = '0.5');
 
-    // 2. 이전에 닫혀있던 상태라면 해당 메뉴 열기
     if (!isAlreadyOpen) {
         targetBox.classList.add('show');
         if (mode === 'text') {
             document.querySelectorAll('.mode-select .menu-btn')[0].style.opacity = '1';
-            clearImage('q'); clearImage('desc'); // 이미지 폼 초기화
+            clearImage('q'); clearImage('desc');
         } else {
             document.querySelectorAll('.mode-select .menu-btn')[1].style.opacity = '1';
         }
@@ -492,7 +505,7 @@ function triggerCamera(type) {
     input.click();
 }
 
-// [수정됨] 아이폰 고해상도 이미지 블랙스크린 방지 (안전 리사이징)
+// 아이폰 고해상도 대응
 function handleImageFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -504,20 +517,13 @@ function handleImageFile(e) {
     reader.onload = function(event) {
         const tempImg = new Image();
         tempImg.onload = function() {
-            // iOS Canvas 메모리 제한(Mega-pixel limit) 회피
-            // 긴 변이 2048px을 넘지 않도록 리사이징
             const MAX_SIZE = 2048; 
             let width = tempImg.width;
             let height = tempImg.height;
 
             if (width > MAX_SIZE || height > MAX_SIZE) {
-                if (width > height) {
-                    height *= MAX_SIZE / width;
-                    width = MAX_SIZE;
-                } else {
-                    width *= MAX_SIZE / height;
-                    height = MAX_SIZE;
-                }
+                if (width > height) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                else { width *= MAX_SIZE / height; height = MAX_SIZE; }
             }
 
             const canvas = document.createElement('canvas');
@@ -526,7 +532,6 @@ function handleImageFile(e) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(tempImg, 0, 0, width, height);
 
-            // 안전한 크기로 줄어든 이미지를 자르기 도구 소스로 사용
             cropImg.src = canvas.toDataURL('image/jpeg', 0.9);
         }
         tempImg.onerror = function() {
@@ -537,16 +542,12 @@ function handleImageFile(e) {
     };
     reader.readAsDataURL(file);
 
-    // cropImg 로드 완료 시 (위의 src 설정 후 실행)
     cropImg.onload = function() {
         showLoading(false);
         rotationAngle = 0;
         startCropping();
     };
-    cropImg.onerror = function() {
-        showLoading(false);
-        // showToast("이미지 로드 실패", 'error'); // 위에서 처리하므로 생략 가능
-    };
+    cropImg.onerror = function() { showLoading(false); };
     currentCropBlob = file;
 }
 
@@ -561,7 +562,6 @@ function startCropping() {
 }
 
 function drawCropCanvas() {
-    // 1. 캔버스 준비 (회전 고려)
     const isVertical = rotationAngle % 180 !== 0;
     const w = isVertical ? cropImg.height : cropImg.width;
     const h = isVertical ? cropImg.width : cropImg.height;
@@ -579,19 +579,15 @@ function drawCropCanvas() {
     
     cropCtx.scale(dpr, dpr);
     cropCtx.clearRect(0, 0, w, h);
-    
-    // 2. 이미지 그리기
     cropCtx.save();
     cropCtx.translate(w/2, h/2);
     cropCtx.rotate(rotationAngle * Math.PI / 180);
     cropCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
     cropCtx.restore();
 
-    // 3. 어두운 오버레이
     cropCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     cropCtx.fillRect(0, 0, w, h);
 
-    // 4. 선택 영역 클리어 & 테두리
     cropCtx.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
     cropCtx.strokeStyle = '#fff';
     cropCtx.lineWidth = 2;
@@ -606,7 +602,6 @@ function drawCropCanvas() {
     cropCtx.drawImage(cropImg, -cropImg.width/2, -cropImg.height/2);
     cropCtx.restore();
 
-    // 5. 리사이즈 핸들 (우하단 빨간 점)
     cropCtx.fillStyle = '#ef5350';
     cropCtx.beginPath();
     cropCtx.arc(cropRect.x + cropRect.w, cropRect.y + cropRect.h, 10, 0, Math.PI*2);
@@ -625,7 +620,7 @@ function applyCrop() {
     showLoading(true);
     setTimeout(() => {
         const tempCanvas = document.createElement('canvas');
-        const maxDim = 800; // 최종 저장 용량 최적화
+        const maxDim = 800;
         let rw = cropRect.w;
         let rh = cropRect.h;
         if (rw > maxDim || rh > maxDim) {
@@ -676,11 +671,8 @@ function applyCrop() {
 function closeCrop() {
     document.getElementById('crop-modal').style.display = 'none';
     document.body.style.overflow = '';
-    // 이미 URL revoke 처리는 handleImageFile에서 안하므로(src 재사용 위해), 필요시 여기서 처리
-    // 여기서는 메모리 관리를 위해 유지
 }
 
-// 스마트 자르기 포인터 이벤트
 const cropContainer = document.getElementById('crop-canvas-container');
 
 cropContainer.addEventListener('pointerdown', e => {
@@ -691,7 +683,6 @@ cropContainer.addEventListener('pointerdown', e => {
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
     
-    // 핸들 감지
     const handleDist = Math.sqrt(Math.pow(x - (cropRect.x + cropRect.w), 2) + Math.pow(y - (cropRect.y + cropRect.h), 2));
     
     if (handleDist < 25 * scaleX) {
@@ -740,8 +731,6 @@ window.addEventListener('pointermove', e => {
 });
 window.addEventListener('pointerup', () => cropDragMode = 'none');
 
-
-// 이미지 삭제
 function clearImage(type) {
     if (type === 'q') {
         document.getElementById('preview-q-img').src = "";
@@ -756,7 +745,6 @@ function clearImage(type) {
     }
 }
 
-// --- [4. 문제 관리 로직] ---
 function addTextWord() {
     const q = document.getElementById('new-q').value.trim();
     const a = document.getElementById('new-a').value.trim();
@@ -904,7 +892,9 @@ function parseExcel() {
     showToast(`${c}개 추가됨`, 'success');
     toggleExcel();
 }
-// --- [5. 게임 로직 (퍼즐 + 퀴즈 + 복습 모드)] ---
+// ============================================================
+// [파트 5] 게임 로직 (퍼즐 + 퀴즈 + 복습 모드)
+// ============================================================
 const SHAPES = [
     [[0,0],[0,1],[1,0],[1,1]], // O
     [[0,0],[1,0],[2,0],[3,0],[4,0]], // I5
@@ -1008,7 +998,7 @@ function startReviewMode() {
     showQuestion();
 }
 
-// [NEW] 복습 모드 나가기
+// 복습 모드 나가기
 function quitReview() {
     document.getElementById('quiz-modal').style.display = 'none';
     showScreen('home');
